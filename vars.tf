@@ -6,24 +6,17 @@ variable "vpc_cidr_block" {
   default = ""
 }
 
-variable "bucket_name" {
-  default = ""
-}
-
-variable "bucket_tags" {
+variable "tags" {
   default = {
     Name = ""
   }
 }
 
-variable "role_name" {
+variable "bucket_name" {
   default = ""
 }
 
-variable "account_id" {
+variable "topic_name" {
   default = ""
 }
 
-variable "repo_name" {
-  default = ""
-}
