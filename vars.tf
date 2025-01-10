@@ -20,6 +20,10 @@ variable "topic_name" {
   default = ""
 }
 
+variable "event_rule_name" {
+  default = ""
+}
+
 variable "gha_role_name" {
   default = ""
 }
