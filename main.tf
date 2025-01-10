@@ -22,7 +22,17 @@ resource "aws_sns_topic" "game_day_topic" {
   name = var.topic_name
 }
 
-// IAM Resources
+// Lambda Resources 
+resource "aws_lambda_function" "devops_day02_lambda" {
+  function_name = "devops_day02_lambda"
+  handler = "lambda_function.lambda_handler"
+  runtime = "python3.12"
+  role = aws_iam_role.lambda_exec_role.arn
+  filename = "../day02_lambda.zip"
+  source_code_hash = filebase64sha256("../day02_lambda.zip")
+}
+
+
 // IAM Resources | https://registry.terraform.io/providers/hashicorp/aws/2.33.0/docs/guides/iam-policy-documents
 resource "aws_iam_role" "devopsallstars_gha_role" {
   name  = var.gha_role_name
@@ -89,5 +99,20 @@ resource "aws_sns_topic_policy" "devopsallstars_sns_policy" {
         "Resource": "${aws_sns_topic.game_day_topic.arn}",
       }
     ]
+  })
+}
+
+resource "aws_iam_role" "lambda_exec_role" {
+  name = "lambda_exec_role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [{
+      Action = "sts:AssumeRole",
+      Effect = "Allow",
+      Principal = {
+        Service = "lambda.amazonaws.com"
+      }
+    }]
   })
 }
