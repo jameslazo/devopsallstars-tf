@@ -35,3 +35,7 @@ variable "account_id" {
 variable "repo_name" {
   default = ""
 }
+ 
+variable "nba_api_key" {
+  default = ""
+}

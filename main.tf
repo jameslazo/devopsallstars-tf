@@ -38,12 +38,10 @@ resource "aws_s3_object" "notification_lambda" {
 // Lambda Resources | https://developer.hashicorp.com/terraform/tutorials/aws/lambda-api-gateway#create-and-upload-lambda-function-archive
 data "archive_file" "lambda_notification_zip" {
   type = "zip"
-
   source_dir  = "../day02-notifications/src/"
   output_path = "../day02_lambda.zip"
   excludes = ["__pycache__/*"]
 }
-
 
 resource "aws_lambda_function" "devops_day02_lambda" {
   function_name = "devops_day02_lambda"
@@ -52,13 +50,12 @@ resource "aws_lambda_function" "devops_day02_lambda" {
   role = aws_iam_role.lambda_exec.arn
   filename = "../day02_lambda.zip"
   source_code_hash = filebase64sha256("../day02_lambda.zip")
-}
-
-resource "aws_lambda_permission" "cloudwatch_lambda_invocation" {
-  statement_id = "AllowExecutionFromCloudWatch"
-  action = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.devops_day02_lambda.function_name
-  principal = "events.amazonaws.com"
+  environment {
+    variables = {
+      NBA_API_KEY = var.nba_api_key
+      SNS_TOPIC_ARN = aws_sns_topic.game_day_topic.arn
+    }
+  }
 }
 
 // SNS Resources
@@ -66,7 +63,35 @@ resource "aws_sns_topic" "game_day_topic" {
   name = var.topic_name
 }
 
+/* Used for CloudWatch to publish to SNS
+resource "aws_sns_topic_policy" "devopsallstars_sns_policy" {
+  arn = aws_sns_topic.game_day_topic.arn
+  policy = jsonencode({
+    "Version": "2012-10-17",
+    "Id": "sns-publish",
+    "Statement": [
+      {
+        "Sid": "sns-publish",
+        "Effect": "Allow",
+        "Principal": {
+          "Service": "events.amazonaws.com"
+        },
+        "Action": "sns:Publish",
+        "Resource": "${aws_sns_topic.game_day_topic.arn}"
+      }
+    ]
+  })
+}
+*/
+
 // EventBridge Resources | https://medium.com/@nagarjun_nagesh/terraform-aws-eventbridge-rule-21ba1fc1d93e
+resource "aws_lambda_permission" "cloudwatch_lambda_invocation" {
+  statement_id = "AllowExecutionFromCloudWatch"
+  action = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.devops_day02_lambda.function_name
+  principal = "events.amazonaws.com"
+}
+
 resource "aws_cloudwatch_event_rule" "devops_notification_event_rule" {
   name = var.event_rule_name
   description = "cron job for lambda"
@@ -134,25 +159,6 @@ resource "aws_iam_role_policy" "devopsallstars_gha_policy_attachment" {
   policy = data.aws_iam_policy_document.devopsallstars_gha_role_policy.json
 }
 
-resource "aws_sns_topic_policy" "devopsallstars_sns_policy" {
-  arn    = aws_sns_topic.game_day_topic.arn
-  policy = jsonencode({
-    "Version": "2012-10-17",
-    "Id": "sns-publish",
-    "Statement": [
-      {
-        "Sid": "sns-publish",
-        "Effect": "Allow",
-        "Principal": {
-          "Service": "events.amazonaws.com"
-        },
-        "Action": "sns:Publish",
-        "Resource": "${aws_sns_topic.game_day_topic.arn}",
-      }
-    ]
-  })
-}
-
 // https://stackoverflow.com/questions/57288992/terraform-how-to-create-iam-role-for-aws-lambda-and-deploy-both
 resource "aws_iam_role" "lambda_exec" {
   name = "lambda_exec_role"
@@ -172,4 +178,24 @@ resource "aws_iam_role" "lambda_exec" {
 resource "aws_iam_role_policy_attachment" "lambda_policy" {
   role       = aws_iam_role.lambda_exec.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+resource "aws_iam_policy" "lambda_sns_publish_policy" {
+  name = "lambda_sns_publish_policy"
+  description = "Policy allowing Lambda to publish to SNS topic"
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = "sns:Publish"
+        Resource = "${aws_sns_topic.game_day_topic.arn}"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "lambda_sns_publish_attachment" {
+  role = aws_iam_role.lambda_exec.name
+  policy_arn = aws_iam_policy.lambda_sns_publish_policy.arn
 }
