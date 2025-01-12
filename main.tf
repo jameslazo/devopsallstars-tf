@@ -41,7 +41,9 @@ data "archive_file" "lambda_notification_zip" {
 
   source_dir  = "../day02-notifications/src/"
   output_path = "../day02_lambda.zip"
+  excludes = ["__pycache__/*"]
 }
+
 
 resource "aws_lambda_function" "devops_day02_lambda" {
   function_name = "devops_day02_lambda"
@@ -111,12 +113,17 @@ data "aws_iam_policy_document" "devopsallstars_gha_role_policy" {
       "s3:ListBucket",
       "s3:GetBucketLocation",
       "s3:GetObject",
-      "s3:DeleteObject"
+      "s3:DeleteObject",
+      "lambda:UpdateFunctionCode",
+      "lambda:UpdateFunctionConfiguration",
+      "lambda:GetFunction",
+      "lambda:InvokeFunction"
     ]
 
     resources = [
       aws_s3_bucket.weather_data_bucket.arn,
-      "${aws_s3_bucket.weather_data_bucket.arn}/*"
+      "${aws_s3_bucket.weather_data_bucket.arn}/*",
+      aws_lambda_function.devops_day02_lambda.arn
     ]
   }
 }
