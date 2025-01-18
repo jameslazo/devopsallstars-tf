@@ -12,7 +12,19 @@ variable "tags" {
   }
 }
 
-variable "bucket_name" {
+variable "lambda_bucket" {
+  default = ""  
+}
+
+variable "weather_bucket_name" {
+  default = ""
+}
+
+variable "data_lake_bucket_raw" {
+  default = ""
+}
+
+variable "data_lake_bucket_transformed" {
   default = ""
 }
 

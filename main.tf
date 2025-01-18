@@ -12,15 +12,30 @@ resource "aws_vpc" "devopsallstars" {
 // S3 Resources
 // Day 1 Weather Data
 resource "aws_s3_bucket" "weather_data_bucket" {
-  bucket = var.bucket_name
+  bucket = var.weather_bucket_name
   tags = {
     name = var.tags
   }
 }
 
-// Day 2 Lambda Bucket
+// Day 3 Data Lake
+resource "aws_s3_bucket" "data_lake_bucket_raw" {
+  bucket = var.data_lake_bucket_raw
+  tags = {
+    name = var.tags
+  }
+}
+
+resource "aws_s3_bucket" "data_lake_bucket_transformed" {
+  bucket = var.data_lake_bucket_transformed
+  tags = {
+    name = var.tags
+  }
+}
+
+// Lambda Bucket
 resource "aws_s3_bucket" "lambda_bucket" {
-  bucket = "devopsallstars-lambda-bucket"
+  bucket = var.lambda_bucket
   tags = {
     name = var.tags
   }
