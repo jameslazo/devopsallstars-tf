@@ -120,6 +120,29 @@ resource "aws_lambda_function" "devops_day03_transform_lambda" {
   }
 }
 
+// S3 Bucket Notification Configuration
+resource "aws_lambda_permission" "s3_invoke_permission" {
+  statement_id = "AllowS3Invoke"
+  action = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.devops_day03_transform_lambda.function_name
+  principal = "s3.amazonaws.com"
+
+  source_arn = aws_s3_bucket.data_lake_bucket_raw.arn
+}
+
+// S3 Bucket Notification Configuration
+resource "aws_s3_bucket_notification" "example_bucket_notification" {
+  bucket = aws_s3_bucket.data_lake_bucket_raw.id
+
+  lambda_function {
+    lambda_function_arn = aws_lambda_function.devops_day03_transform_lambda.arn
+    events = ["s3:ObjectCreated:*"]
+    filter_suffix = ".json" # Filter by object key suffix
+  }
+
+  depends_on = [aws_lambda_permission.s3_invoke_permission]
+}
+
 // SNS Resources
 resource "aws_sns_topic" "game_day_topic" {
   name = var.topic_name
@@ -312,3 +335,4 @@ resource "aws_iam_role_policy_attachment" "transform_lambda_s3_attachment" {
   role = aws_iam_role.lambda_exec.name
   policy_arn = aws_iam_policy.transform_lambda_s3_policy.arn
 }
+
