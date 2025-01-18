@@ -24,7 +24,7 @@ variable "data_lake_bucket_raw" {
   default = ""
 }
 
-variable "data_lake_bucket_transformed" {
+variable "data_lake_bucket_extracted" {
   default = ""
 }
 
@@ -50,4 +50,12 @@ variable "repo_name" {
  
 variable "nba_api_key" {
   default = ""
+}
+
+variable "raw_data_env" {
+  default = ""
+}
+
+variable "extracted_data_env" {
+  default = ""  
 }

@@ -26,8 +26,16 @@ resource "aws_s3_bucket" "data_lake_bucket_raw" {
   }
 }
 
-resource "aws_s3_bucket" "data_lake_bucket_transformed" {
-  bucket = var.data_lake_bucket_transformed
+resource "aws_s3_bucket" "data_lake_bucket_extracted" {
+  bucket = var.data_lake_bucket_extracted
+  tags = {
+    name = var.tags
+  }
+}
+
+// Athena Bucket
+resource "aws_s3_bucket" "athena_bucket" {
+  bucket = "devopsallstars-athena-results"
   tags = {
     name = var.tags
   }
@@ -53,12 +61,13 @@ resource "aws_s3_object" "notification_lambda" {
 // Lambda Resources | https://developer.hashicorp.com/terraform/tutorials/aws/lambda-api-gateway#create-and-upload-lambda-function-archive
 data "archive_file" "lambda_notification_zip" {
   type = "zip"
-  source_dir  = "../day02-notifications/src/"
+  source_dir = "../day02-notifications/src/"
   output_path = "../day02_lambda.zip"
   excludes = ["__pycache__/*"]
 }
 
 resource "aws_lambda_function" "devops_day02_lambda" {
+  depends_on = [data.archive_file.lambda_notification_zip]
   function_name = "devops_day02_lambda"
   handler = "lambda_function.lambda_handler"
   runtime = "python3.12"
@@ -75,12 +84,13 @@ resource "aws_lambda_function" "devops_day02_lambda" {
 
 data "archive_file" "datalake_api_lambda_zip" {
   type = "zip"
-  source_dir  = "../day03-datalake/src/api_lambda"
+  source_dir = "../day03-datalake/src/api_lambda/"
   output_path = "../day03_api_lambda.zip"
   excludes = ["__pycache__/*"]
 }
 
 resource "aws_lambda_function" "devops_day03_api_lambda" {
+  depends_on = [data.archive_file.datalake_api_lambda_zip]
   function_name = "devops_day03_api_lambda"
   handler = "main.lambda_handler"
   runtime = "python3.12"
@@ -92,30 +102,31 @@ resource "aws_lambda_function" "devops_day03_api_lambda" {
       SPORTS_DATA_API_KEY = var.nba_api_key
       NBA_ENDPOINT = "https://api.sportsdata.io/v3/nba/scores/json/Players"
       DEVOPS_PREFIX = "devopsallstars-day03-"
-      RAW_BUCKET = var.data_lake_bucket_raw
+      RAW_BUCKET = var.raw_data_env
     }
   }
 }
 
-data "archive_file" "datalake_transform_lambda_zip" {
+data "archive_file" "datalake_extract_lambda_zip" {
   type = "zip"
-  source_dir  = "../day03-datalake/src/transform_lambda"
-  output_path = "../day03_transform_lambda.zip"
+  source_dir = "../day03-datalake/src/extract_lambda/"
+  output_path = "../day03_extract_lambda.zip"
   excludes = ["__pycache__/*"]
 }
 
-resource "aws_lambda_function" "devops_day03_transform_lambda" {
-  function_name = "devops_day03_transform_lambda"
+resource "aws_lambda_function" "devops_day03_extract_lambda" {
+  depends_on = [data.archive_file.datalake_extract_lambda_zip]
+  function_name = "devops_day03_extract_lambda"
   handler = "main.lambda_handler"
   runtime = "python3.12"
   role = aws_iam_role.lambda_exec.arn
   filename = "../day03_api_lambda.zip"
-  source_code_hash = filebase64sha256("../day03_transform_lambda.zip")
+  source_code_hash = filebase64sha256("../day03_extract_lambda.zip")
   environment {
     variables = {
       DEVOPS_PREFIX = "devopsallstars-day03-"
-      RAW_BUCKET = var.data_lake_bucket_raw
-      TRANSFORMED_BUCKET = var.data_lake_bucket_transformed
+      RAW_BUCKET = var.raw_data_env
+      extracted_BUCKET = var.extracted_data_env
     }
   }
 }
@@ -124,7 +135,7 @@ resource "aws_lambda_function" "devops_day03_transform_lambda" {
 resource "aws_lambda_permission" "s3_invoke_permission" {
   statement_id = "AllowS3Invoke"
   action = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.devops_day03_transform_lambda.function_name
+  function_name = aws_lambda_function.devops_day03_extract_lambda.function_name
   principal = "s3.amazonaws.com"
 
   source_arn = aws_s3_bucket.data_lake_bucket_raw.arn
@@ -135,7 +146,7 @@ resource "aws_s3_bucket_notification" "example_bucket_notification" {
   bucket = aws_s3_bucket.data_lake_bucket_raw.id
 
   lambda_function {
-    lambda_function_arn = aws_lambda_function.devops_day03_transform_lambda.arn
+    lambda_function_arn = aws_lambda_function.devops_day03_extract_lambda.arn
     events = ["s3:ObjectCreated:*"]
     filter_suffix = ".json" # Filter by object key suffix
   }
@@ -202,7 +213,7 @@ resource "aws_glue_catalog_table" "glueopsallstars_table" {
     "classification" = "json"
   }
   storage_descriptor {
-    location = aws_s3_bucket.data_lake_bucket_transformed.arn
+    location = "s3://${aws_s3_bucket.data_lake_bucket_extracted.bucket}/"
     input_format = "org.apache.hadoop.mapred.TextInputFormat"
     output_format = "org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat"
     ser_de_info {
@@ -241,10 +252,20 @@ resource "aws_glue_crawler" "glueopsallstars_crawler" {
   role = aws_iam_role.lambda_exec.arn
   database_name = aws_glue_catalog_database.glueopsallstars.name
   s3_target {
-    path = "s3://${aws_s3_bucket.data_lake_bucket_transformed.bucket}/"
+    path = "s3://${aws_s3_bucket.data_lake_bucket_extracted}/"
   }  
 }
 
+resource "aws_athena_workgroup" "devopsallstars" {
+  name = "devopsallstars"
+  configuration {
+    enforce_workgroup_configuration = true
+    publish_cloudwatch_metrics_enabled = true
+    result_configuration {
+      output_location = "s3://${aws_s3_bucket.athena_bucket.bucket_domain_name}/athena-results/"
+    }
+  }
+}
 
 // IAM Resources | https://registry.terraform.io/providers/hashicorp/aws/2.33.0/docs/guides/iam-policy-documents
 resource "aws_iam_role" "devopsallstars_gha_role" {
@@ -294,7 +315,7 @@ data "aws_iam_policy_document" "devopsallstars_gha_role_policy" {
       "${aws_s3_bucket.data_lake_bucket_raw.arn}/*",
       aws_lambda_function.devops_day02_lambda.arn,
       aws_lambda_function.devops_day03_api_lambda.arn,
-      aws_lambda_function.devops_day03_transform_lambda.arn
+      aws_lambda_function.devops_day03_extract_lambda.arn
     ]
   }
 }
@@ -365,9 +386,9 @@ resource "aws_iam_role_policy_attachment" "api_lambda_s3raw_attachment" {
   policy_arn = aws_iam_policy.api_lambda_s3_raw_policy.arn
 }
 
-resource "aws_iam_policy" "transform_lambda_s3_policy" {
+resource "aws_iam_policy" "extract_lambda_s3_policy" {
   name = "lambda_sns_publish_policy"
-  description = "Policy allowing Lambda to put transformed data into S3 bucket"
+  description = "Policy allowing Lambda to put extracted data into S3 bucket"
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -377,7 +398,7 @@ resource "aws_iam_policy" "transform_lambda_s3_policy" {
           "s3:PutObject",
           "s3:PutObjectAcl"
         ]
-        Resource = "${aws_s3_bucket.data_lake_bucket_transformed.arn}/*"
+        Resource = "${aws_s3_bucket.data_lake_bucket_extracted.arn}/*"
       },
       {
         Effect = "Allow"
@@ -388,8 +409,92 @@ resource "aws_iam_policy" "transform_lambda_s3_policy" {
   })
 }
 
-resource "aws_iam_role_policy_attachment" "transform_lambda_s3_attachment" {
+resource "aws_iam_role_policy_attachment" "extract_lambda_s3_attachment" {
   role = aws_iam_role.lambda_exec.name
-  policy_arn = aws_iam_policy.transform_lambda_s3_policy.arn
+  policy_arn = aws_iam_policy.extract_lambda_s3_policy.arn
 }
 
+resource "aws_iam_role" "glue_service_role" {
+  name = "glue-service-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Principal = {
+          Service = "glue.amazonaws.com"
+        }
+        Effect = "Allow"
+        Sid    = ""
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "glue_access_s3" {
+  role       = aws_iam_role.glue_service_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSGlueServiceRole"
+}
+
+resource "aws_iam_role_policy_attachment" "glue_access_catalog" {
+  role       = aws_iam_role.glue_service_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSGlueDataCatalogAccess"
+}
+
+
+
+resource "aws_iam_role" "athena_query_execution_role" {
+  name = "athena-query-execution-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Principal = {
+          Service = "athena.amazonaws.com"
+        }
+        Effect = "Allow"
+        Sid    = ""
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "athena_glue_s3_access" {
+  role       = aws_iam_role.athena_query_execution_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonAthenaFullAccess"
+}
+
+resource "aws_iam_role_policy_attachment" "glue_access" {
+  role       = aws_iam_role.athena_query_execution_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSGlueServiceRole"
+}
+
+resource "aws_iam_policy" "athena_s3_access_policy" {
+  name        = "AthenaS3AccessPolicy"
+  description = "Custom policy allowing Athena to interact with S3 for query results."
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect   = "Allow",
+        Action   = ["s3:GetObject", "s3:ListBucket"], 
+        Resource = [
+          "arn:aws:s3:::your-data-lake-bucket",
+          "arn:aws:s3:::your-data-lake-bucket/*"
+        ]
+      },
+      {
+        Effect   = "Allow",
+        Action   = "s3:PutObject",
+        Resource = [
+          "arn:aws:s3:::your-athena-query-results-bucket",
+          "arn:aws:s3:::your-athena-query-results-bucket/*"
+        ]
+      }
+    ]
+  })
+}
