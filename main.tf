@@ -210,7 +210,11 @@ data "aws_iam_policy_document" "devopsallstars_gha_role_policy" {
     resources = [
       aws_s3_bucket.weather_data_bucket.arn,
       "${aws_s3_bucket.weather_data_bucket.arn}/*",
-      aws_lambda_function.devops_day02_lambda.arn
+      aws_s3_bucket.data_lake_bucket_raw.arn,
+      "${aws_s3_bucket.data_lake_bucket_raw.arn}/*",
+      aws_lambda_function.devops_day02_lambda.arn,
+      aws_lambda_function.devops_day03_api_lambda.arn,
+      aws_lambda_function.devops_day03_transform_lambda.arn
     ]
   }
 }
@@ -260,4 +264,51 @@ resource "aws_iam_policy" "lambda_sns_publish_policy" {
 resource "aws_iam_role_policy_attachment" "lambda_sns_publish_attachment" {
   role = aws_iam_role.lambda_exec.name
   policy_arn = aws_iam_policy.lambda_sns_publish_policy.arn
+}
+
+resource "aws_iam_policy" "api_lambda_s3_raw_policy" {
+  name = "lambda_sns_publish_policy"
+  description = "Policy allowing Lambda to put api data into S3 bucket"
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = "s3:PutObject"
+        Resource = "${aws_s3_bucket.data_lake_bucket_raw.arn}/*"
+      }
+    ]
+  })
+}
+resource "aws_iam_role_policy_attachment" "api_lambda_s3raw_attachment" {
+  role = aws_iam_role.lambda_exec.name
+  policy_arn = aws_iam_policy.api_lambda_s3_raw_policy.arn
+}
+
+resource "aws_iam_policy" "transform_lambda_s3_policy" {
+  name = "lambda_sns_publish_policy"
+  description = "Policy allowing Lambda to put transformed data into S3 bucket"
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:PutObject",
+          "s3:PutObjectAcl"
+        ]
+        Resource = "${aws_s3_bucket.data_lake_bucket_transformed.arn}/*"
+      },
+      {
+        Effect = "Allow"
+        Action = "s3:GetObject"
+        Resource = "${aws_s3_bucket.data_lake_bucket_raw.arn}/*"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "transform_lambda_s3_attachment" {
+  role = aws_iam_role.lambda_exec.name
+  policy_arn = aws_iam_policy.transform_lambda_s3_policy.arn
 }
