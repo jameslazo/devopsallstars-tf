@@ -73,6 +73,53 @@ resource "aws_lambda_function" "devops_day02_lambda" {
   }
 }
 
+data "archive_file" "datalake_api_lambda_zip" {
+  type = "zip"
+  source_dir  = "../day03-datalake/src/api_lambda"
+  output_path = "../day03_api_lambda.zip"
+  excludes = ["__pycache__/*"]
+}
+
+resource "aws_lambda_function" "devops_day03_api_lambda" {
+  function_name = "devops_day03_api_lambda"
+  handler = "main.lambda_handler"
+  runtime = "python3.12"
+  role = aws_iam_role.lambda_exec.arn
+  filename = "../day03_api_lambda.zip"
+  source_code_hash = filebase64sha256("../day03_api_lambda.zip")
+  environment {
+    variables = {
+      SPORTS_DATA_API_KEY = var.nba_api_key
+      NBA_ENDPOINT = "https://api.sportsdata.io/v3/nba/scores/json/Players"
+      DEVOPS_PREFIX = "devopsallstars-day03-"
+      RAW_BUCKET = var.data_lake_bucket_raw
+    }
+  }
+}
+
+data "archive_file" "datalake_transform_lambda_zip" {
+  type = "zip"
+  source_dir  = "../day03-datalake/src/transform_lambda"
+  output_path = "../day03_transform_lambda.zip"
+  excludes = ["__pycache__/*"]
+}
+
+resource "aws_lambda_function" "devops_day03_transform_lambda" {
+  function_name = "devops_day03_transform_lambda"
+  handler = "main.lambda_handler"
+  runtime = "python3.12"
+  role = aws_iam_role.lambda_exec.arn
+  filename = "../day03_api_lambda.zip"
+  source_code_hash = filebase64sha256("../day03_transform_lambda.zip")
+  environment {
+    variables = {
+      DEVOPS_PREFIX = "devopsallstars-day03-"
+      RAW_BUCKET = var.data_lake_bucket_raw
+      TRANSFORMED_BUCKET = var.data_lake_bucket_transformed
+    }
+  }
+}
+
 // SNS Resources
 resource "aws_sns_topic" "game_day_topic" {
   name = var.topic_name
