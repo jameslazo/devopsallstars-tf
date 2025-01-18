@@ -189,6 +189,63 @@ resource "aws_cloudwatch_event_target" "devops_notification_event_target" {
   arn = aws_lambda_function.devops_day02_lambda.arn
 }
 
+// Glue|Athena Resources
+resource "aws_glue_catalog_database" "glueopsallstars" {
+  name = "glueopsallstars"
+}
+
+resource "aws_glue_catalog_table" "glueopsallstars_table" {
+  name = "glueopsallstars_table"
+  database_name = aws_glue_catalog_database.glueopsallstars.name
+  table_type = "EXTERNAL_TABLE"
+  parameters = {
+    "classification" = "json"
+  }
+  storage_descriptor {
+    location = aws_s3_bucket.data_lake_bucket_transformed.arn
+    input_format = "org.apache.hadoop.mapred.TextInputFormat"
+    output_format = "org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat"
+    ser_de_info {
+      name = "SerdeInfo"
+      serialization_library = "org.openx.data.jsonserde.JsonSerDe"
+    }
+    columns {
+      name = "PlayerID"
+      type = "int"
+    }
+    columns {
+      name = "FirstName"
+      type = "string"
+    }
+    columns {
+      name = "LastName"
+      type = "string"
+    }
+    columns {
+      name = "Team"
+      type = "string"
+    }
+    columns {
+      name = "Position"
+      type = "string"
+    }
+    columns {
+      name = "Points"
+      type = "int"
+    }
+  }
+}
+
+resource "aws_glue_crawler" "glueopsallstars_crawler" {
+  name = "glueopsallstars_crawler"
+  role = aws_iam_role.lambda_exec.arn
+  database_name = aws_glue_catalog_database.glueopsallstars.name
+  s3_target {
+    path = "s3://${aws_s3_bucket.data_lake_bucket_transformed.bucket}/"
+  }  
+}
+
+
 // IAM Resources | https://registry.terraform.io/providers/hashicorp/aws/2.33.0/docs/guides/iam-policy-documents
 resource "aws_iam_role" "devopsallstars_gha_role" {
   name  = var.gha_role_name
