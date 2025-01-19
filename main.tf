@@ -120,6 +120,7 @@ resource "aws_lambda_function" "devops_day03_api_lambda" {
   handler = "main.lambda_handler"
   runtime = "python3.12"
   role = aws_iam_role.lambda_exec.arn
+  timeout = 10
   filename = "../day03_api_lambda.zip"
   source_code_hash = filebase64sha256("../day03_api_lambda.zip")
   environment {
@@ -145,6 +146,7 @@ resource "aws_lambda_function" "devops_day03_extract_lambda" {
   handler = "main.lambda_handler"
   runtime = "python3.12"
   role = aws_iam_role.lambda_exec.arn
+  timeout = 10
   filename = "../day03_api_lambda.zip"
   source_code_hash = filebase64sha256("../day03_extract_lambda.zip")
   environment {
@@ -167,7 +169,7 @@ resource "aws_lambda_permission" "s3_invoke_permission" {
 }
 
 // S3 Bucket Notification Configuration
-resource "aws_s3_bucket_notification" "example_bucket_notification" {
+resource "aws_s3_bucket_notification" "raw_bucket_notification" {
   bucket = aws_s3_bucket.data_lake_bucket_raw.id
 
   lambda_function {
