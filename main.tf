@@ -35,7 +35,7 @@ resource "aws_s3_bucket" "data_lake_bucket_extracted" {
 
 // Athena Bucket
 resource "aws_s3_bucket" "athena_bucket" {
-  bucket = "devopsallstars-athena-results"
+  bucket = var.athena_bucket
   tags = {
     name = var.tags
   }
@@ -49,6 +49,13 @@ resource "aws_s3_bucket" "lambda_bucket" {
   }
 }
 
+resource "aws_s3_bucket_versioning" "lambda_bucket_versioning" {
+  bucket = aws_s3_bucket.lambda_bucket.id
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
 resource "aws_s3_object" "notification_lambda" {
   bucket = aws_s3_bucket.lambda_bucket.id
 
@@ -56,6 +63,24 @@ resource "aws_s3_object" "notification_lambda" {
   source = data.archive_file.lambda_notification_zip.output_path
 
   etag = filemd5(data.archive_file.lambda_notification_zip.output_path)
+}
+
+resource "aws_s3_object" "api_lambda" {
+  bucket = aws_s3_bucket.lambda_bucket.id
+
+  key    = "day03_api_lambda.zip"
+  source = data.archive_file.datalake_api_lambda_zip.output_path
+
+  etag = filemd5(data.archive_file.datalake_api_lambda_zip.output_path)
+}
+
+resource "aws_s3_object" "extract_lambda" {
+  bucket = aws_s3_bucket.lambda_bucket.id
+
+  key    = "day03_extract_lambda.zip"
+  source = data.archive_file.datalake_extract_lambda_zip.output_path
+
+  etag = filemd5(data.archive_file.datalake_extract_lambda_zip.output_path)
 }
 
 // Lambda Resources | https://developer.hashicorp.com/terraform/tutorials/aws/lambda-api-gateway#create-and-upload-lambda-function-archive
@@ -126,7 +151,7 @@ resource "aws_lambda_function" "devops_day03_extract_lambda" {
     variables = {
       DEVOPS_PREFIX = "devopsallstars-day03-"
       RAW_BUCKET = var.raw_data_env
-      extracted_BUCKET = var.extracted_data_env
+      EXTRACTED_BUCKET = var.extracted_data_env
     }
   }
 }
@@ -221,27 +246,27 @@ resource "aws_glue_catalog_table" "glueopsallstars_table" {
       serialization_library = "org.openx.data.jsonserde.JsonSerDe"
     }
     columns {
-      name = "PlayerID"
+      name = "playerid"
       type = "int"
     }
     columns {
-      name = "FirstName"
+      name = "firstname"
       type = "string"
     }
     columns {
-      name = "LastName"
+      name = "lastname"
       type = "string"
     }
     columns {
-      name = "Team"
+      name = "team"
       type = "string"
     }
     columns {
-      name = "Position"
+      name = "position"
       type = "string"
     }
     columns {
-      name = "Points"
+      name = "points"
       type = "int"
     }
   }
@@ -249,10 +274,10 @@ resource "aws_glue_catalog_table" "glueopsallstars_table" {
 
 resource "aws_glue_crawler" "glueopsallstars_crawler" {
   name = "glueopsallstars_crawler"
-  role = aws_iam_role.lambda_exec.arn
+  role = aws_iam_role.glue_service_role.arn
   database_name = aws_glue_catalog_database.glueopsallstars.name
   s3_target {
-    path = "s3://${aws_s3_bucket.data_lake_bucket_extracted}/"
+    path = "s3://${var.data_lake_bucket_extracted}/"
   }  
 }
 
@@ -262,7 +287,7 @@ resource "aws_athena_workgroup" "devopsallstars" {
     enforce_workgroup_configuration = true
     publish_cloudwatch_metrics_enabled = true
     result_configuration {
-      output_location = "s3://${aws_s3_bucket.athena_bucket.bucket_domain_name}/athena-results/"
+      output_location = "s3://${var.athena_bucket}/athena-results/"
     }
   }
 }
@@ -368,7 +393,7 @@ resource "aws_iam_role_policy_attachment" "lambda_sns_publish_attachment" {
 }
 
 resource "aws_iam_policy" "api_lambda_s3_raw_policy" {
-  name = "lambda_sns_publish_policy"
+  name = "lambda_s3raw_policy"
   description = "Policy allowing Lambda to put api data into S3 bucket"
   policy = jsonencode({
     Version = "2012-10-17"
@@ -381,13 +406,14 @@ resource "aws_iam_policy" "api_lambda_s3_raw_policy" {
     ]
   })
 }
+
 resource "aws_iam_role_policy_attachment" "api_lambda_s3raw_attachment" {
   role = aws_iam_role.lambda_exec.name
   policy_arn = aws_iam_policy.api_lambda_s3_raw_policy.arn
 }
 
 resource "aws_iam_policy" "extract_lambda_s3_policy" {
-  name = "lambda_sns_publish_policy"
+  name = "lambda_s3extract_policy"
   description = "Policy allowing Lambda to put extracted data into S3 bucket"
   policy = jsonencode({
     Version = "2012-10-17"
@@ -437,13 +463,6 @@ resource "aws_iam_role_policy_attachment" "glue_access_s3" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSGlueServiceRole"
 }
 
-resource "aws_iam_role_policy_attachment" "glue_access_catalog" {
-  role       = aws_iam_role.glue_service_role.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSGlueDataCatalogAccess"
-}
-
-
-
 resource "aws_iam_role" "athena_query_execution_role" {
   name = "athena-query-execution-role"
 
@@ -465,11 +484,6 @@ resource "aws_iam_role" "athena_query_execution_role" {
 resource "aws_iam_role_policy_attachment" "athena_glue_s3_access" {
   role       = aws_iam_role.athena_query_execution_role.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonAthenaFullAccess"
-}
-
-resource "aws_iam_role_policy_attachment" "glue_access" {
-  role       = aws_iam_role.athena_query_execution_role.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSGlueServiceRole"
 }
 
 resource "aws_iam_policy" "athena_s3_access_policy" {
@@ -494,6 +508,40 @@ resource "aws_iam_policy" "athena_s3_access_policy" {
           "arn:aws:s3:::your-athena-query-results-bucket",
           "arn:aws:s3:::your-athena-query-results-bucket/*"
         ]
+      }
+    ]
+  })
+}
+
+resource "aws_s3_bucket_policy" "raw_data_lake_bucket_policy" {
+  bucket = aws_s3_bucket.data_lake_bucket_raw.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          AWS = aws_iam_role.lambda_exec.arn
+        }
+        Action   = "s3:PutObject"
+        Resource = "${aws_s3_bucket.data_lake_bucket_raw.arn}/*"
+      }
+    ]
+  })
+}
+
+resource "aws_s3_bucket_policy" "extracted_data_lake_bucket_policy" {
+  bucket = aws_s3_bucket.data_lake_bucket_extracted.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          AWS = aws_iam_role.lambda_exec.arn
+        }
+        Action   = "s3:PutObject"
+        Resource = "${aws_s3_bucket.data_lake_bucket_extracted.arn}/*"
       }
     ]
   })

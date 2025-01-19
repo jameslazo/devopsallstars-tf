@@ -28,6 +28,10 @@ variable "data_lake_bucket_extracted" {
   default = ""
 }
 
+variable "athena_bucket" {
+  default = ""  
+}
+
 variable "topic_name" {
   default = ""
 }
