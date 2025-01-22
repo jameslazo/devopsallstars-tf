@@ -10,21 +10,11 @@ resource "aws_vpc" "devopsallstars" {
 }
 
 // S3 Resources
-/** Moved
 // Day 1 Weather Data
 resource "aws_s3_bucket" "weather_data_bucket" {
   bucket = var.weather_bucket_name
   tags = {
     name = var.tags
-  }
-}
- */
-data "terraform_remote_state" "day01_weather_bucket" {
-  backend = "s3"
-  config = {
-    bucket = "${var.devops_backend_bucket}"   # S3 bucket storing the source state
-    key    = "day01/terraform.tfstate"  # Path to the source state file
-    region = "${var.region}"
   }
 }
 
@@ -41,48 +31,6 @@ resource "aws_s3_bucket" "data_lake_bucket_extracted" {
   tags = {
     name = var.tags
   }
-}
-
-/** Shared Backend Resources
-  
- * S3 Bucket for Terraform Backend
-
- * S3 Bucket Versioning for said bucket
-
- * DDB Table for state locking
-
- */
-
-resource "aws_s3_bucket" "devops_backend_bucket" {
-  bucket = var.devops_backend_bucket
-  lifecycle {
-    prevent_destroy = true
-  }
-}
-
-resource "aws_s3_bucket_versioning" "backend_bucket_versioning" {
-  bucket = aws_s3_bucket.devops_backend_bucket.id
-  versioning_configuration {
-    status = "Enabled"
-  }
-}
-
-/** DynamoDB Tables for State Locking | state migration: https://developer.hashicorp.com/terraform/cli/commands/state/mv
-  
- * Shared
-
- * Day 01
-
- * Day 02
-
- * Day 03
-
- */
-
-module "ddb" {
-  source = "./modules/ddb"
-  table_names = var.table_names
-  ddb_tags = var.ddb_tags
 }
 
 // Athena Bucket
@@ -138,8 +86,8 @@ resource "aws_s3_object" "extract_lambda" {
 // Lambda Resources | https://developer.hashicorp.com/terraform/tutorials/aws/lambda-api-gateway#create-and-upload-lambda-function-archive
 data "archive_file" "lambda_notification_zip" {
   type = "zip"
-  source_dir = "../day02-notifications/src/"
-  output_path = "../day02_lambda.zip"
+  source_dir = "../../day02-notifications/src/"
+  output_path = "../../day02_lambda.zip"
   excludes = ["__pycache__/*"]
 }
 
@@ -149,8 +97,8 @@ resource "aws_lambda_function" "devops_day02_lambda" {
   handler = "lambda_function.lambda_handler"
   runtime = "python3.12"
   role = aws_iam_role.lambda_exec.arn
-  filename = "../day02_lambda.zip"
-  source_code_hash = filebase64sha256("../day02_lambda.zip")
+  filename = "../../day02_lambda.zip"
+  source_code_hash = filebase64sha256("../../day02_lambda.zip")
   environment {
     variables = {
       NBA_API_KEY = var.nba_api_key
@@ -161,8 +109,8 @@ resource "aws_lambda_function" "devops_day02_lambda" {
 
 data "archive_file" "datalake_api_lambda_zip" {
   type = "zip"
-  source_dir = "../day03-datalake/src/api_lambda/"
-  output_path = "../day03_api_lambda.zip"
+  source_dir = "../../day03-datalake/src/api_lambda/"
+  output_path = "../../day03_api_lambda.zip"
   excludes = ["__pycache__/*"]
 }
 
@@ -173,8 +121,8 @@ resource "aws_lambda_function" "devops_day03_api_lambda" {
   runtime = "python3.12"
   role = aws_iam_role.lambda_exec.arn
   timeout = 10
-  filename = "../day03_api_lambda.zip"
-  source_code_hash = filebase64sha256("../day03_api_lambda.zip")
+  filename = "../../day03_api_lambda.zip"
+  source_code_hash = filebase64sha256("../../day03_api_lambda.zip")
   environment {
     variables = {
       SPORTS_DATA_API_KEY = var.nba_api_key
@@ -187,8 +135,8 @@ resource "aws_lambda_function" "devops_day03_api_lambda" {
 
 data "archive_file" "datalake_extract_lambda_zip" {
   type = "zip"
-  source_dir = "../day03-datalake/src/extract_lambda/"
-  output_path = "../day03_extract_lambda.zip"
+  source_dir = "../../day03-datalake/src/extract_lambda/"
+  output_path = "../../day03_extract_lambda.zip"
   excludes = ["__pycache__/*"]
 }
 
@@ -199,8 +147,8 @@ resource "aws_lambda_function" "devops_day03_extract_lambda" {
   runtime = "python3.12"
   role = aws_iam_role.lambda_exec.arn
   timeout = 10
-  filename = "../day03_api_lambda.zip"
-  source_code_hash = filebase64sha256("../day03_extract_lambda.zip")
+  filename = "../../day03_api_lambda.zip"
+  source_code_hash = filebase64sha256("../../day03_extract_lambda.zip")
   environment {
     variables = {
       DEVOPS_PREFIX = "devopsallstars-day03-"
@@ -209,6 +157,7 @@ resource "aws_lambda_function" "devops_day03_extract_lambda" {
     }
   }
 }
+
 
 // S3 Bucket Notification Configuration
 resource "aws_lambda_permission" "s3_invoke_permission" {
@@ -388,12 +337,8 @@ data "aws_iam_policy_document" "devopsallstars_gha_role_policy" {
     ]
 
     resources = [
-      /*
       aws_s3_bucket.weather_data_bucket.arn,
       "${aws_s3_bucket.weather_data_bucket.arn}/*",
-       */
-      data.terraform_remote_state.day01_weather_bucket.outputs.s3_bucket_arn,
-      "${data.terraform_remote_state.day01_weather_bucket.outputs.s3_bucket_arn}/*",
       aws_s3_bucket.data_lake_bucket_raw.arn,
       "${aws_s3_bucket.data_lake_bucket_raw.arn}/*",
       aws_lambda_function.devops_day02_lambda.arn,

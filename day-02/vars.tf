@@ -12,18 +12,8 @@ variable "tags" {
   }
 }
 
-variable "ddb_tags" {
-  default = {
-    Name = ""
-  }
-}
-
 variable "lambda_bucket" {
   default = ""  
-}
-
-variable "devops_backend_bucket" {
-  default = ""
 }
 
 variable "weather_bucket_name" {
@@ -72,9 +62,4 @@ variable "raw_data_env" {
 
 variable "extracted_data_env" {
   default = ""  
-}
-
-variable "table_names" {
-  description = "List of DynamoDB table names to create"
-  type        = list(string)
 }

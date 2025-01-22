@@ -1,14 +1,12 @@
 #############################
 # Terraform files to ignore #
 #############################
-.terraform*          
-.terraform/
-.terraform/*
-*.tfstate           
-*.tfstate.backup
-*.tfstate.lock.*
+*.terraform*          
+*.tfstate*
+*.backup
 *.tfvars
 *.lock.*
+backend*
 
 
 #########################
@@ -17,4 +15,5 @@
 .env
 .venv
 */__pycache__/*
+*.bak
 
