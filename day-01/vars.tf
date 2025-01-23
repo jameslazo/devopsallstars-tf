@@ -1,3 +1,7 @@
+variable "region" {
+  default = ""  
+}
+
 variable "tags" {
   default = {
     name = ""

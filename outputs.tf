@@ -10,3 +10,6 @@ output "aws_iam_role_policy_attachment" {
   value = aws_iam_role_policy_attachment.lambda_sns_publish_attachment.id
 }
 
+output "lambda_bucket" {
+  value = aws_s3_bucket.lambda_bucket.id
+}
