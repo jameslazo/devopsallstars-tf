@@ -128,7 +128,6 @@ resource "aws_lambda_function" "devops_day03_extract_lambda" {
   }
 }
 
-
 // S3 Bucket Notification Configuration
 resource "aws_lambda_permission" "s3_invoke_permission" {
   statement_id = "AllowS3Invoke"
@@ -151,7 +150,6 @@ resource "aws_s3_bucket_notification" "raw_bucket_notification" {
 
   depends_on = [aws_lambda_permission.s3_invoke_permission]
 }
-
 
 // Glue|Athena Resources
 resource "aws_glue_catalog_database" "glueopsallstars" {
