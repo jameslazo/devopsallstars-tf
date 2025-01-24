@@ -8,7 +8,5 @@ resource "aws_dynamodb_table" "tf_state_locks" {
     name = "LockID"
     type = "S"
   }
-  tags = {
-    Name = var.ddb_tags["Name"]
-  }
+  tags = var.tags
 }

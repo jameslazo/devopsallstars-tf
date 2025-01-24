@@ -7,19 +7,11 @@ variable "vpc_cidr_block" {
 }
 
 variable "tags" {
-  default = {
-    Name = ""
-  }
-}
-
-variable "ddb_tags" {
-  default = {
-    Name = ""
-  }
+  default = {}
 }
 
 variable "lambda_bucket" {
-  default = ""  
+  default = ""
 }
 
 variable "devops_backend_bucket" {
@@ -39,7 +31,7 @@ variable "data_lake_bucket_extracted" {
 }
 
 variable "athena_bucket" {
-  default = ""  
+  default = ""
 }
 
 variable "topic_name" {
@@ -61,7 +53,7 @@ variable "account_id" {
 variable "repo_name" {
   default = ""
 }
- 
+
 variable "nba_api_key" {
   default = ""
 }
@@ -71,7 +63,7 @@ variable "raw_data_env" {
 }
 
 variable "extracted_data_env" {
-  default = ""  
+  default = ""
 }
 
 variable "table_names" {

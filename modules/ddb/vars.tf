@@ -3,7 +3,6 @@ variable "table_names" {
   type = list(string)
 }
 
-variable "ddb_tags" {
-  description = "Tags to apply to resources"
+variable "tags" {
   type = map(string)
 }

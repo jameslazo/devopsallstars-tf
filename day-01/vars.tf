@@ -3,11 +3,13 @@ variable "region" {
 }
 
 variable "tags" {
-  default = {
-    name = ""
-  }
+  default = {}
 }
 
 variable "weather_bucket_name" {
+  default = ""
+}
+
+variable "devops_backend_bucket" {
   default = ""
 }

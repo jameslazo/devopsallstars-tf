@@ -2,14 +2,21 @@ output "aws_vpc_id" {
   value = aws_vpc.devopsallstars.id
 }
 
-output "lambda_execution_role_arn" {
-  value = aws_iam_role.lambda_exec.arn
+output "lambda_execution_role" {
+  value = {
+    arn = aws_iam_role.lambda_exec.arn
+    name = aws_iam_role.lambda_exec.name
+  }
 }
 
 output "aws_iam_role_policy_attachment" {
-  value = aws_iam_role_policy_attachment.lambda_sns_publish_attachment.id
+  value = aws_iam_role_policy_attachment.lambda_policy.id
 }
 
 output "lambda_bucket" {
   value = aws_s3_bucket.lambda_bucket.id
+}
+
+output "state_lock_table_names" {
+  value = module.ddb.ddb_table_names
 }
