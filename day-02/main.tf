@@ -13,7 +13,7 @@ provider "aws" {
       ddb:
         aws_dynamodb_table:
           keys: 
-            - day0{1,2,3,4,5,6}
+            - day0{1..31}
       s3:
         aws_s3_bucket:
           lambda_bucket: "ID"
