@@ -19,6 +19,8 @@ resource "aws_vpc" "devopsallstars" {
 |
 * Lambda Deployment Bucket & Versioning
 |
+* Lambda Execution Role & Policy
+|
 ***************************/
 
 // DynamoDB Tables for State Locking  | state migration: https://developer.hashicorp.com/terraform/cli/commands/state/mv
