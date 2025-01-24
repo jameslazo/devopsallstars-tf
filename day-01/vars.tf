@@ -1,5 +1,5 @@
 variable "region" {
-  default = ""  
+  default = ""
 }
 
 variable "tags" {

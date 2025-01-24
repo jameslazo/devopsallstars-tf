@@ -25,7 +25,7 @@ resource "aws_vpc" "devopsallstars" {
 module "ddb" {
   source      = "./modules/ddb"
   table_names = var.table_names
-  tags        = {
+  tags = {
     Name = var.tags
   }
 }

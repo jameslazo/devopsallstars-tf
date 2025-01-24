@@ -4,7 +4,7 @@ output "aws_vpc_id" {
 
 output "lambda_execution_role" {
   value = {
-    arn = aws_iam_role.lambda_exec.arn
+    arn  = aws_iam_role.lambda_exec.arn
     name = aws_iam_role.lambda_exec.name
   }
 }

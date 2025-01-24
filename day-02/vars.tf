@@ -17,7 +17,7 @@ variable "topic_name" {
 variable "event_rule_name" {
   default = ""
 }
- 
+
 variable "nba_api_key" {
   default = ""
 }

@@ -11,7 +11,7 @@ variable "tags" {
 }
 
 variable "lambda_bucket" {
-  default = ""  
+  default = ""
 }
 
 variable "data_lake_bucket_raw" {
@@ -23,7 +23,7 @@ variable "data_lake_bucket_extracted" {
 }
 
 variable "athena_bucket" {
-  default = ""  
+  default = ""
 }
 
 variable "nba_api_key" {
@@ -35,5 +35,5 @@ variable "raw_data_env" {
 }
 
 variable "extracted_data_env" {
-  default = ""  
+  default = ""
 }
