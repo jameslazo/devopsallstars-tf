@@ -16,7 +16,3 @@ output "aws_iam_role_policy_attachment" {
 output "lambda_bucket" {
   value = aws_s3_bucket.lambda_bucket.id
 }
-
-output "state_lock_table_names" {
-  value = module.ddb.ddb_table_names
-}

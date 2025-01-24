@@ -9,7 +9,6 @@ resource "aws_vpc" "devopsallstars" {
   }
 }
 
-
 /***************************
 * Shared Backend Resources *
 ****************************
