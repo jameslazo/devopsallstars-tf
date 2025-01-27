@@ -45,14 +45,14 @@ data "terraform_remote_state" "shared_state" {
 |
 * Security Groups
 |
-* api_EC2 Instances
+* EC2 Instances
 |
 * IAM Roles & Policies
 | 
 ******************************/
 
 provider "aws" {
-    region = var.region
+  region = var.region
 }
 
 /**********************************
@@ -122,10 +122,10 @@ resource "aws_security_group" "api_ec2_sg" {
   vpc_id      = data.terraform_remote_state.shared_state.outputs.aws_vpc.aws_vpc_id
 
   ingress {
-    description = "elb"
-    from_port   = 0
-    to_port     = 65535
-    protocol    = "TCP"
+    description     = "elb"
+    from_port       = 0
+    to_port         = 65535
+    protocol        = "TCP"
     security_groups = [aws_security_group.api_ec2_elb_sg.id]
   }
 
@@ -170,18 +170,17 @@ resource "aws_security_group" "api_ec2_elb_sg" {
 /****************
 * EC2 Instances *
 ****************/
-
 resource "aws_instance" "api_ec2" {
-    depends_on = [
+  depends_on = [
     aws_security_group.api_ec2_sg,
     aws_subnet.api_ec2_primary,
   ]
 
-  ami           = data.aws_ami.latest_ami.id
-  instance_type = var.instance_type_wp
+  ami                    = data.aws_ami.latest_ami.id
+  instance_type          = var.instance_type_wp
   vpc_security_group_ids = [aws_security_group.api_ec2_sg.id]
-  subnet_id       = aws_subnet.api_ec2_primary.id
-  
+  subnet_id              = aws_subnet.api_ec2_primary.id
+
   // Comment out to update user_data
   lifecycle {
     ignore_changes = [user_data]
@@ -221,26 +220,30 @@ resource "aws_instance" "api_ec2" {
 
 data "aws_ami" "latest_ami" {
   most_recent = true
-  owners = ["amazon"]
+  owners      = ["amazon"]
   filter {
-  name = "name"
-  values = ["al2023-ami-2023*"]
+    name   = "name"
+    values = ["al2023-ami-2023*"]
   }
   filter {
-  name = "root-device-type"
-  values = ["ebs"]
+    name   = "root-device-type"
+    values = ["ebs"]
   }
   filter {
-  name = "virtualization-type"
-  values = ["hvm"]
+    name   = "virtualization-type"
+    values = ["hvm"]
   }
   filter {
-  name = "architecture"
-  values = ["x86_64"]
+    name   = "architecture"
+    values = ["x86_64"]
   }
 }
 
-// ELB Block
+
+/****************
+* ALB Resources *
+****************/
+
 resource "aws_lb" "api_ec2_lb" {
   name               = "api-lb"
   internal           = false
@@ -249,9 +252,9 @@ resource "aws_lb" "api_ec2_lb" {
   subnets            = [aws_subnet.api_ec2_primary.id, aws_subnet.api_ec2_failover.id]
 
   enable_deletion_protection = false
-  enable_http2 = true
-  idle_timeout = 60
-  ip_address_type = "ipv4"
+  enable_http2               = true
+  idle_timeout               = 60
+  ip_address_type            = "ipv4"
 
   tags = {
     Name = var.tags
@@ -312,4 +315,33 @@ resource "aws_lb_listener" "api_ec2_listener" {
   }
 }
 
-// IAM Block
+
+/***************
+* IAM Policies *
+***************/
+resource "aws_iam_policy" "aws_ssm_policy" {
+  name        = "aws-ssm-policy"
+  description = "Policy for SSM"
+  policy = jsonencode({
+    "Version" : "2012-10-17",
+    "Statement" : [
+      {
+        "Effect" : "Allow",
+        "Action" : [
+          "ssmmessages:CreateControlChannel",
+          "ssmmessages:CreateDataChannel",
+          "ssmmessages:OpenControlChannel",
+          "ssmmessages:OpenDataChannel"
+        ],
+        "Resource" : "*"
+      },
+      {
+        "Effect" : "Allow",
+        "Action" : [
+          "s3:GetEncryptionConfiguration"
+        ],
+        "Resource" : "*"
+      }
+    ]
+  })
+}
