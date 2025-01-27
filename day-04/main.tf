@@ -51,9 +51,14 @@ data "terraform_remote_state" "shared_state" {
 | 
 ******************************/
 
+
+/***********
+* Provider *
+***********/
 provider "aws" {
   region = var.region
 }
+
 
 /**********************************
 * Internet Gateway & Route Tables *
@@ -243,7 +248,6 @@ data "aws_ami" "latest_ami" {
 /****************
 * ALB Resources *
 ****************/
-
 resource "aws_lb" "api_ec2_lb" {
   name               = "api-lb"
   internal           = false
@@ -317,7 +321,7 @@ resource "aws_lb_listener" "api_ec2_listener" {
 
 
 /***************
-* IAM Policies *
+* IAM Policies * | https://docs.aws.amazon.com/systems-manager/latest/userguide/getting-started-add-permissions-to-existing-profile.html
 ***************/
 resource "aws_iam_policy" "aws_ssm_policy" {
   name        = "aws-ssm-policy"
