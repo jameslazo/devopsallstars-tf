@@ -30,11 +30,62 @@ data "terraform_remote_state" "shared_state" {
   }
 }
 
+
+/******************************
+* infrastructure architecture *
+*******************************
+|
+* VPC (shared)
+|
+* Internet Gateway & Route Tables
+|
+* Subnets
+|
+* Security Groups
+|
+* EC2 Instances
+|
+* IAM Roles & Policies
+| 
+******************************/
+
 provider "aws" {
     region = var.region
 }
 
-// Internet Gateway block
+// Internet Gateway & Route Tables
+resource "aws_internet_gateway" "doas_ig" {
+  depends_on = [
+    data.terraform_remote_state.shared_state.outputs.aws_vpc,
+  ]
+  vpc_id = data.terraform_remote_state.shared_state.outputs.aws_vpc.aws_vpc_id
+  tags = {
+    "Name" = "wp-ig"
+  }
+}
+
+resource "aws_route_table" "doas_pubrt" {
+  depends_on = [
+    aws_internet_gateway.doas_ig,
+  ]
+  vpc_id = data.terraform_remote_state.shared_state.outputs.aws_vpc.aws_vpc_id
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.doas_ig.id
+  }
+  tags = {
+    "Name" = "wp-pubrt"
+  }
+}
+
+resource "aws_route_table_association" "doas_rta" {
+  depends_on = [
+    aws_subnet.ec2_primary,
+    aws_route_table.doas_pubrt
+  ]
+  subnet_id      = aws_subnet.ec2_primary.id
+  route_table_id = aws_route_table.doas_pubrt.id
+}
 
 // Subnet block
 
