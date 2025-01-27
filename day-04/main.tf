@@ -60,6 +60,21 @@ provider "aws" {
 }
 
 
+/***********
+* ECR Repo *
+***********/
+resource "aws_ecr_repository" "devops_ecr" {
+  name = "devops-ecr"
+  image_tag_mutability = "MUTABLE"
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+  tags = {
+    "Name" = var.tags
+  }
+}
+
+
 /**********************************
 * Internet Gateway & Route Tables *
 **********************************/
