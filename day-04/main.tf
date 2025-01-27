@@ -43,7 +43,7 @@ data "terraform_remote_state" "shared_state" {
 |
 * Security Groups
 |
-* EC2 Instances
+* api_EC2 Instances
 |
 * IAM Roles & Policies
 | 
@@ -80,38 +80,88 @@ resource "aws_route_table" "doas_pubrt" {
 
 resource "aws_route_table_association" "doas_rta" {
   depends_on = [
-    aws_subnet.ec2_primary,
+    aws_subnet.api_ec2_primary,
     aws_route_table.doas_pubrt
   ]
-  subnet_id      = aws_subnet.ec2_primary.id
+  subnet_id      = aws_subnet.api_ec2_primary.id
   route_table_id = aws_route_table.doas_pubrt.id
 }
 
 // Subnets
-resource "aws_subnet" "ec2_primary" {
+resource "aws_subnet" "api_ec2_primary" {
   depends_on = [
     aws_vpc.wp_vpc,
   ]
-  cidr_block              = var.cidr_block_subnet_ec2_primary
+  cidr_block              = var.cidr_block_subnet_api_ec2_primary
   availability_zone       = var.availability_zone_primary
   map_public_ip_on_launch = true
   vpc_id                  = data.terraform_remote_state.shared_state.outputs.aws_vpc.aws_vpc_id
   tags = {
-    "Name" = "ec2-primary"
+    "Name" = "api_ec2-primary"
   }
 }
 
-resource "aws_subnet" "ec2_failover" {
+resource "aws_subnet" "api_ec2_failover" {
   depends_on = [
     aws_vpc.wp_vpc,
   ]
-  cidr_block              = var.cidr_block_subnet_ec2_failover
+  cidr_block              = var.cidr_block_subnet_api_ec2_failover
   availability_zone       = var.availability_zone_failover
   map_public_ip_on_launch = true
   vpc_id                  = data.terraform_remote_state.shared_state.outputs.aws_vpc.aws_vpc_id
   tags = {
-    "Name" = "ec2-failover"
+    "Name" = "api_ec2-failover"
   }
 }
 
-// Security group block
+// Security Groups
+resource "aws_security_group" "api_ec2_sg" {
+  name        = "api_ec2-bastion"
+  description = "Bastion to api_ec2 & RDS"
+  vpc_id      = data.terraform_remote_state.shared_state.outputs.aws_vpc.aws_vpc_id
+
+  ingress {
+    description = "elb"
+    from_port   = 0
+    to_port     = 65535
+    protocol    = "TCP"
+    security_groups = [aws_security_group.api_ec2_elb_sg.id]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+resource "aws_security_group" "api_ec2_elb_sg" {
+  name        = "api_ec2-elb"
+  description = "elb sg"
+  vpc_id      = data.terraform_remote_state.shared_state.outputs.aws_vpc.aws_vpc_id
+
+  ingress {
+    description = "http"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "TCP"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  /* Uncomment for HTTPS
+  ingress {
+    description = "https"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "TCP"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  */
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = [var.cidr_block_supernet]
+  }
+}
+
