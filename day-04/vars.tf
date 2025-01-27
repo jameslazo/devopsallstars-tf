@@ -12,7 +12,7 @@ variable "vpc_cidr_block" {
 }
 
 variable "tags" {
-  default = {}
+  default = ""
 }
 
 variable "devops_backend_bucket" {
@@ -47,4 +47,22 @@ variable "cidr_block_supernet" {
 variable "instance_type_wp" {
     type = string
     default = ""
+}
+
+variable "acm_certificate_arn" {
+  description = "ACM certificate ARN for HTTPS"
+  type        = string
+  default = ""
+}
+
+variable "domain_name" {
+  description = "Blog subdomain"
+  type        = string
+  default = ""
+}
+
+variable "hosted_zone_id" {
+  description = "Route 53 hosted zone ID"
+  type        = string
+  default = ""
 }
