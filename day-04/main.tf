@@ -60,7 +60,7 @@ resource "aws_internet_gateway" "doas_ig" {
   ]
   vpc_id = data.terraform_remote_state.shared_state.outputs.aws_vpc.aws_vpc_id
   tags = {
-    "Name" = "wp-ig"
+    "Name" = "doas-ig"
   }
 }
 
@@ -74,7 +74,7 @@ resource "aws_route_table" "doas_pubrt" {
     gateway_id = aws_internet_gateway.doas_ig.id
   }
   tags = {
-    "Name" = "wp-pubrt"
+    "Name" = "doas-pubrt"
   }
 }
 
@@ -87,6 +87,31 @@ resource "aws_route_table_association" "doas_rta" {
   route_table_id = aws_route_table.doas_pubrt.id
 }
 
-// Subnet block
+// Subnets
+resource "aws_subnet" "ec2_primary" {
+  depends_on = [
+    aws_vpc.wp_vpc,
+  ]
+  cidr_block              = var.cidr_block_subnet_ec2_primary
+  availability_zone       = var.availability_zone_primary
+  map_public_ip_on_launch = true
+  vpc_id                  = data.terraform_remote_state.shared_state.outputs.aws_vpc.aws_vpc_id
+  tags = {
+    "Name" = "ec2-primary"
+  }
+}
+
+resource "aws_subnet" "ec2_failover" {
+  depends_on = [
+    aws_vpc.wp_vpc,
+  ]
+  cidr_block              = var.cidr_block_subnet_ec2_failover
+  availability_zone       = var.availability_zone_failover
+  map_public_ip_on_launch = true
+  vpc_id                  = data.terraform_remote_state.shared_state.outputs.aws_vpc.aws_vpc_id
+  tags = {
+    "Name" = "ec2-failover"
+  }
+}
 
 // Security group block

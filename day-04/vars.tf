@@ -29,12 +29,12 @@ variable "availability_zone_failover" {
     default = "us-east-1b"
 }
 
-variable "cidr_block_subnet_bastion_primary" {
+variable "cidr_block_subnet_ec2_primary" {
     type = string
     default = "172.16.0.0/24"
 }
 
-variable "cidr_block_subnet_bastion_failover" {
+variable "cidr_block_subnet_ec2_failover" {
     type = string
     default = "172.16.1.0/24"
 }
