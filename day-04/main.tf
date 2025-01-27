@@ -59,9 +59,6 @@ provider "aws" {
 * Internet Gateway & Route Tables *
 **********************************/
 resource "aws_internet_gateway" "doas_ig" {
-  depends_on = [
-    data.terraform_remote_state.shared_state.outputs.aws_vpc,
-  ]
   vpc_id = data.terraform_remote_state.shared_state.outputs.aws_vpc.aws_vpc_id
   tags = {
     "Name" = "doas-ig"
@@ -96,9 +93,6 @@ resource "aws_route_table_association" "doas_rta" {
 * Subnets *
 **********/
 resource "aws_subnet" "api_ec2_primary" {
-  depends_on = [
-    aws_vpc.wp_vpc,
-  ]
   cidr_block              = var.cidr_block_subnet_api_ec2_primary
   availability_zone       = var.availability_zone_primary
   map_public_ip_on_launch = true
@@ -109,9 +103,6 @@ resource "aws_subnet" "api_ec2_primary" {
 }
 
 resource "aws_subnet" "api_ec2_failover" {
-  depends_on = [
-    aws_vpc.wp_vpc,
-  ]
   cidr_block              = var.cidr_block_subnet_api_ec2_failover
   availability_zone       = var.availability_zone_failover
   map_public_ip_on_launch = true
@@ -180,7 +171,7 @@ resource "aws_security_group" "api_ec2_elb_sg" {
 * EC2 Instances *
 ****************/
 
-resource "aws_instance" "api" {
+resource "aws_instance" "api_ec2" {
     depends_on = [
     aws_security_group.api_ec2_sg,
     aws_subnet.api_ec2_primary,
@@ -269,12 +260,12 @@ resource "aws_lb" "api_ec2_lb" {
 
 resource "aws_lb_target_group" "api_ec2_tg" {
   depends_on = [
-    aws_lb.api_lb
+    aws_lb.api_ec2_lb
   ]
   name     = "api-tg"
   port     = 80
   protocol = "HTTP"
-  vpc_id   = aws_vpc.wp_vpc.id
+  vpc_id   = data.terraform_remote_state.shared_state.outputs.aws_vpc.aws_vpc_id
 
   health_check {
     path                = "/"
@@ -298,18 +289,18 @@ resource "aws_lb_target_group_attachment" "api_ec2_tg_attachment" {
 }
 
 resource "aws_lb_listener" "api_ec2_listener_http" {
-  load_balancer_arn = aws_lb.api_lb.arn
+  load_balancer_arn = aws_lb.api_ec2_lb.arn
   port              = 80
   protocol          = "HTTP"
 
   default_action {
     type             = "forward"
-    target_group_arn = aws_lb_target_group.api_tg.arn
+    target_group_arn = aws_lb_target_group.api_ec2_tg.arn
   }
 }
 
-resource "aws_lb_listener" "wp_listener" {
-  load_balancer_arn = aws_lb.api_lb.arn
+resource "aws_lb_listener" "api_ec2_listener" {
+  load_balancer_arn = aws_lb.api_ec2_lb.arn
   port              = 443
   protocol          = "HTTPS"
   ssl_policy        = "ELBSecurityPolicy-2016-08"
@@ -317,6 +308,8 @@ resource "aws_lb_listener" "wp_listener" {
 
   default_action {
     type             = "forward"
-    target_group_arn = aws_lb_target_group.api_tg.arn
+    target_group_arn = aws_lb_target_group.api_ec2_tg.arn
   }
 }
+
+// IAM Block
