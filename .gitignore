@@ -2,6 +2,8 @@
 # Terraform files to ignore #
 #############################
 *
-!day*/
+!day-*
+!day-*/*.tf
 !modules/
-!**/{main,vars,outputs}.tf
+!modules/**/*.tf
+**/backend.tf
