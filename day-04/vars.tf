@@ -3,9 +3,20 @@ variable "cidr_block_vpc" {
     default = "172.16.0.0/12"
 }
 
-variable "aws_region" {
-    type = string
-    default = "us-east-1"
+variable "region" {
+  default = "us-east-1"
+}
+
+variable "vpc_cidr_block" {
+  default = ""
+}
+
+variable "tags" {
+  default = {}
+}
+
+variable "devops_backend_bucket" {
+  default = ""
 }
 
 variable "availability_zone_primary" {
