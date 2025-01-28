@@ -194,6 +194,7 @@ resource "aws_instance" "api_ec2" {
   depends_on = [
     aws_security_group.api_ec2_sg,
     aws_subnet.api_ec2_primary,
+    aws_ecr_repository.devops_ecr
   ]
 
   ami                    = data.aws_ami.latest_ami.id
@@ -201,16 +202,22 @@ resource "aws_instance" "api_ec2" {
   vpc_security_group_ids = [aws_security_group.api_ec2_sg.id]
   subnet_id              = aws_subnet.api_ec2_primary.id
 
-  // Comment out to update user_data
+  // https://developer.hashicorp.com/terraform/tutorials/state/resource-lifecycle
   lifecycle {
-    ignore_changes = [user_data]
+    create_before_destroy = true
   }
 
-  // User data
+  // User data | 
   user_data = <<-EOF
     #!/bin/bash
     # Log commands
     exec > /var/log/user_data.log 2>&1
+    
+    # Environment variables
+    ECR_REPO_URI="${aws_ecr_repository.devops_ecr.repository_url}"
+    AWS_REGION="${var.region}"
+    IMAGE_TAG="latest"
+    CONTAINER_NAME="sports-api"
     
     # Install and start Docker
     yum update -y
@@ -218,11 +225,18 @@ resource "aws_instance" "api_ec2" {
     service docker start
     usermod -aG docker ec2-user
     newgrp docker
-    curl -SL "https://github.com/docker/compose/releases/download/v2.29.3/docker-compose-linux-x86_64" -o /usr/local/bin/docker-compose
-    chmod +x /usr/local/bin/docker-compose
-
+    
     cd /home/ec2-user
-    pwd
+
+    # Install Docker Compose
+    # curl -SL "https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64" -o /usr/local/bin/docker-compose
+    # chmod +x /usr/local/bin/docker-compose
+
+    aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REPO_URI
+
+    docker pull $ECR_REPO_URI:$IMAGE_TAG
+    docker run -d --name $CONTAINER_NAME -p 80:8080 $ECR_REPO_URI:$IMAGE_TAG
+    
     
     # Grab instance metadata
     echo "exporting token for IMDSv2"
@@ -364,3 +378,4 @@ resource "aws_iam_policy" "aws_ssm_policy" {
     ]
   })
 }
+
