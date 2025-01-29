@@ -66,3 +66,9 @@ variable "hosted_zone_id" {
   type        = string
   default     = ""
 }
+
+variable "account_id" {
+  description = "AWS account ID"
+  type        = string
+  default     = ""
+}

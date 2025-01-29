@@ -350,8 +350,9 @@ resource "aws_lb_listener" "api_ec2_listener" {
 
 
 /***************
-* IAM Policies * | https://docs.aws.amazon.com/systems-manager/latest/userguide/getting-started-add-permissions-to-existing-profile.html
+* IAM Policies * 
 ***************/
+// SSM Policy | https://docs.aws.amazon.com/systems-manager/latest/userguide/getting-started-add-permissions-to-existing-profile.html
 resource "aws_iam_policy" "aws_ssm_policy" {
   name        = "aws-ssm-policy"
   description = "Policy for SSM"
@@ -379,3 +380,47 @@ resource "aws_iam_policy" "aws_ssm_policy" {
   })
 }
 
+// EC2 Role, Policy, Policy Attachment & Instance Profile
+resource "aws_iam_role" "ec2_assume_role" {
+  name               = "ec2-ecr-access-role"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action    = "sts:AssumeRole"
+        Effect    = "Allow"
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_iam_policy" "ecr_policy" {
+  name   = "ec2-ecr-policy"
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action    = [
+          "ecr:GetAuthorizationToken",
+          "ecr:BatchCheckLayerAvailability",
+          "ecr:GetDownloadUrlForLayer"
+        ]
+        Effect    = "Allow"
+        Resource  = "arn:aws:ecr:${var.region}:${var.account_id}:repository/${aws_ecr_repository.devops_ecr.name}"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "ecr_role_policy_attachment" {
+  role       = aws_iam_role.ec2_assume_role.name
+  policy_arn = aws_iam_policy.ecr_policy.arn
+}
+
+resource "aws_iam_instance_profile" "ec2_instance_profile" {
+  name = "ec2-instance-profile"
+  role = aws_iam_role.ec2_assume_role.name
+}
