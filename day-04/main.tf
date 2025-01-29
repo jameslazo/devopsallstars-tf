@@ -238,7 +238,7 @@ data "aws_ami" "latest_ami" {
 
 
 data template_file "user_data" {
-  template = file("${path.module}/user_data.sh")
+  template = file("${path.module}/modules/ec2/sh/user_data.sh")
 }
 
 
