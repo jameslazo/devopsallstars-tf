@@ -1,9 +1,18 @@
-#############################
-# Terraform files to ignore #
-#############################
+#\\\\\\\\\\\\#
+#\GIT\IGNORE\#
+#\\\\\\\\\\\\#
+
+# Ignore all files
 *
-!day-*
-!day-*/*.tf
-!modules/
-!modules/**/*.tf
-**/backend.tf
+
+# Whitelist all directories but .terraform
+!*/
+.terraform/
+
+# Whitelist all .tf files but backend
+!*.tf
+backend.tf
+
+# Whitelist other files
+!.gitignore
+!*.sh
