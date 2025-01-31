@@ -70,7 +70,7 @@ resource "aws_ecr_repository" "devops_ecr" {
     scan_on_push = true
   }
   tags = {
-    "Name" = var.tags
+    Name = var.tags
   }
 }
 
@@ -81,7 +81,7 @@ resource "aws_ecr_repository" "devops_ecr" {
 resource "aws_internet_gateway" "doas_ig" {
   vpc_id = data.terraform_remote_state.shared_state.outputs.aws_vpc.aws_vpc_id
   tags = {
-    "Name" = "doas-ig"
+    Name = "doas-ig"
   }
 }
 
@@ -95,7 +95,7 @@ resource "aws_route_table" "doas_pubrt" {
     gateway_id = aws_internet_gateway.doas_ig.id
   }
   tags = {
-    "Name" = "doas-pubrt"
+    Name = "doas-pubrt"
   }
 }
 
@@ -118,7 +118,7 @@ resource "aws_subnet" "api_ec2_primary" {
   map_public_ip_on_launch = true
   vpc_id                  = data.terraform_remote_state.shared_state.outputs.aws_vpc.aws_vpc_id
   tags = {
-    "Name" = "api_ec2-primary"
+    Name = "api_ec2-primary"
   }
 }
 
@@ -128,7 +128,7 @@ resource "aws_subnet" "api_ec2_failover" {
   map_public_ip_on_launch = true
   vpc_id                  = data.terraform_remote_state.shared_state.outputs.aws_vpc.aws_vpc_id
   tags = {
-    "Name" = "api_ec2-failover"
+    Name = "api_ec2-failover"
   }
 }
 
@@ -190,6 +190,8 @@ resource "aws_security_group" "api_ec2_elb_sg" {
 /****************
 * EC2 Instances *
 ****************/
+
+
 resource "aws_instance" "api_ec2" {
   depends_on = [
     aws_security_group.api_ec2_sg,
@@ -198,7 +200,7 @@ resource "aws_instance" "api_ec2" {
   ]
 
   ami                    = data.aws_ami.latest_ami.id
-  instance_type          = var.instance_type_wp
+  instance_type          = var.instance_type
   vpc_security_group_ids = [aws_security_group.api_ec2_sg.id]
   subnet_id              = aws_subnet.api_ec2_primary.id
 
@@ -215,11 +217,21 @@ resource "aws_instance" "api_ec2" {
   }
 }
 
+data template_file "user_data" {
+  template = file("${path.module}/sh/user_data.sh")
+
+  vars = {
+    AWS_REGION = var.region
+    ECR_REPO_URI = aws_ecr_repository.devops_ecr.repository_url
+    ECR_REPO_NAME = aws_ecr_repository.devops_ecr.name
+  }
+}
+
 data "aws_ami" "latest_ami" {
   most_recent = true
   owners      = ["amazon"]
   filter {
-    name   = "name"
+    name   = "Name"
     values = ["al2023-ami-2023*"]
   }
   filter {
@@ -234,11 +246,6 @@ data "aws_ami" "latest_ami" {
     name   = "architecture"
     values = ["x86_64"]
   }
-}
-
-
-data template_file "user_data" {
-  template = file("${path.module}/modules/ec2/sh/user_data.sh")
 }
 
 
@@ -348,15 +355,15 @@ resource "aws_iam_policy" "aws_ssm_policy" {
   })
 }
 
-// EC2 Role, Policy, Policy Attachment & Instance Profile
+// EC2 Role, Policy, Policy Attachment & Instance Profile | https://beltrani.com/ec2-instance-and-container-access-to-ecr-and-other-services/
 resource "aws_iam_role" "ec2_assume_role" {
   name               = "ec2-ecr-access-role"
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
       {
-        Action    = "sts:AssumeRole"
         Effect    = "Allow"
+        Action    = "sts:AssumeRole"
         Principal = {
           Service = "ec2.amazonaws.com"
         }
@@ -370,13 +377,19 @@ resource "aws_iam_policy" "ecr_policy" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
+      { Effect   = "Allow"
+        Action   = ["ecr:GetAuthorizationToken"]
+        Resource = ["*"]
+      },
       {
-        Action    = [
-          "ecr:GetAuthorizationToken",
-          "ecr:BatchCheckLayerAvailability",
-          "ecr:GetDownloadUrlForLayer"
-        ]
         Effect    = "Allow"
+        Action    = [
+          "ecr:BatchCheckLayerAvailability",
+          "ecr:BatchGetImage",
+          "ecr:GetDownloadUrlForLayer",
+          "ecr:DescribeImages"
+        ]
+        
         Resource  = "arn:aws:ecr:${var.region}:${var.account_id}:repository/${aws_ecr_repository.devops_ecr.name}"
       }
     ]
@@ -388,7 +401,7 @@ resource "aws_iam_role_policy_attachment" "ecr_role_policy_attachment" {
   policy_arn = aws_iam_policy.ecr_policy.arn
 }
 
-resource "aws_iam_instance_profile" "ec2_instance_profile" {
-  name = "ec2-instance-profile"
+resource "aws_iam_instance_profile" "ec2_instance_profile_sports_api" {
+  name = "ec2-instance-profile-sports-api"
   role = aws_iam_role.ec2_assume_role.name
 }
