@@ -1,8 +1,3 @@
-variable "cidr_block_vpc" {
-  type    = string
-  default = "172.16.0.0/12"
-}
-
 variable "region" {
   default = "us-east-1"
 }
@@ -12,7 +7,7 @@ variable "tags" {
 }
 
 variable "devops_backend_bucket" {
-  default = ""
+  type =  string
 }
 
 variable "availability_zone_primary" {
