@@ -13,3 +13,11 @@ variable "security_groups" {
 variable "tags" {
   type    = map(string)
 }
+
+variable "user_data" {
+  type    = string
+}
+
+variable "instance_count" {
+  type    = number
+}

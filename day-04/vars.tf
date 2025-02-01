@@ -7,7 +7,7 @@ variable "tags" {
 }
 
 variable "devops_backend_bucket" {
-  type =  string
+  type = string
 }
 
 variable "availability_zone_primary" {
