@@ -7,12 +7,8 @@ variable "region" {
   default = "us-east-1"
 }
 
-variable "vpc_cidr_block" {
-  default = ""
-}
-
 variable "tags" {
-  default = ""
+  type = map(string)
 }
 
 variable "devops_backend_bucket" {
@@ -44,7 +40,7 @@ variable "cidr_block_supernet" {
   default = "172.16.0.0/22"
 }
 
-variable "instance_type_wp" {
+variable "instance_type" {
   type    = string
   default = ""
 }

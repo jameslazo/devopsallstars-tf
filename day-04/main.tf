@@ -69,9 +69,7 @@ resource "aws_ecr_repository" "devops_ecr" {
   image_scanning_configuration {
     scan_on_push = true
   }
-  tags = {
-    Name = var.tags
-  }
+  tags = var.tags
 }
 
 
@@ -92,7 +90,7 @@ resource "aws_route_table" "doas_pubrt" {
   vpc_id = data.terraform_remote_state.shared_state.outputs.aws_vpc.aws_vpc_id
   route {
     cidr_block = "0.0.0.0/0"
-    gateway_id = aws_internet_gateway.doas_ig.id
+    gateway_id = "${aws_internet_gateway.doas_ig.id}"
   }
   tags = {
     Name = "doas-pubrt"
@@ -104,8 +102,8 @@ resource "aws_route_table_association" "doas_rta" {
     aws_subnet.api_ec2_primary,
     aws_route_table.doas_pubrt
   ]
-  subnet_id      = aws_subnet.api_ec2_primary.id
-  route_table_id = aws_route_table.doas_pubrt.id
+  subnet_id      = "${aws_subnet.api_ec2_primary.id}"
+  route_table_id = "${aws_route_table.doas_pubrt.id}"
 }
 
 
@@ -190,61 +188,23 @@ resource "aws_security_group" "api_ec2_elb_sg" {
 /****************
 * EC2 Instances *
 ****************/
-
-
-resource "aws_instance" "api_ec2" {
-  depends_on = [
-    aws_security_group.api_ec2_sg,
-    aws_subnet.api_ec2_primary,
-    aws_ecr_repository.devops_ecr
-  ]
-
-  ami                    = data.aws_ami.latest_ami.id
-  instance_type          = var.instance_type
-  vpc_security_group_ids = [aws_security_group.api_ec2_sg.id]
-  subnet_id              = aws_subnet.api_ec2_primary.id
-
-  // https://developer.hashicorp.com/terraform/tutorials/state/resource-lifecycle
-  lifecycle {
-    create_before_destroy = true
-  }
-
-  // User data | 
+module "api_ec2_instances" {
+  source = "./modules/ec2"
+  instance_type = var.instance_type
+  count = 2
+  subnet_ids = [aws_subnet.api_ec2_primary.id, aws_subnet.api_ec2_failover.id]
+  security_groups = [aws_security_group.api_ec2_sg.id]
+  tags = var.tags
   user_data = data.template_file.user_data.rendered
-
-  tags = {
-    Name = var.tags
-  }
 }
 
 data template_file "user_data" {
   template = file("${path.module}/sh/user_data.sh")
 
   vars = {
-    AWS_REGION = var.region
-    ECR_REPO_URI = aws_ecr_repository.devops_ecr.repository_url
-    ECR_REPO_NAME = aws_ecr_repository.devops_ecr.name
-  }
-}
-
-data "aws_ami" "latest_ami" {
-  most_recent = true
-  owners      = ["amazon"]
-  filter {
-    name   = "Name"
-    values = ["al2023-ami-2023*"]
-  }
-  filter {
-    name   = "root-device-type"
-    values = ["ebs"]
-  }
-  filter {
-    name   = "virtualization-type"
-    values = ["hvm"]
-  }
-  filter {
-    name   = "architecture"
-    values = ["x86_64"]
+    AWS_REGION = "${var.region}"
+    ECR_REPO_URI = "${aws_ecr_repository.devops_ecr.repository_url}"
+    ECR_REPO_NAME = "${aws_ecr_repository.devops_ecr.name}"
   }
 }
 
@@ -264,9 +224,7 @@ resource "aws_lb" "api_ec2_lb" {
   idle_timeout               = 60
   ip_address_type            = "ipv4"
 
-  tags = {
-    Name = var.tags
-  }
+  tags = var.tags
 }
 
 resource "aws_lb_target_group" "api_ec2_tg" {
@@ -288,30 +246,28 @@ resource "aws_lb_target_group" "api_ec2_tg" {
     interval            = 30
   }
 
-  tags = {
-    Name = var.tags
-  }
+  tags = var.tags
 }
 
 resource "aws_lb_target_group_attachment" "api_ec2_tg_attachment" {
-  target_group_arn = aws_lb_target_group.api_ec2_tg.arn
-  target_id        = aws_instance.api_ec2.id
+  target_group_arn = "${aws_lb_target_group.api_ec2_tg.arn}"
+  target_id        = "${aws_instance.api_ec2.id}"
   port             = 80
 }
 
 resource "aws_lb_listener" "api_ec2_listener_http" {
-  load_balancer_arn = aws_lb.api_ec2_lb.arn
+  load_balancer_arn = "${aws_lb.api_ec2_lb.arn}"
   port              = 80
   protocol          = "HTTP"
 
   default_action {
     type             = "forward"
-    target_group_arn = aws_lb_target_group.api_ec2_tg.arn
+    target_group_arn = "${aws_lb_target_group.api_ec2_tg.arn}"
   }
 }
 
 resource "aws_lb_listener" "api_ec2_listener" {
-  load_balancer_arn = aws_lb.api_ec2_lb.arn
+  load_balancer_arn = "${aws_lb.api_ec2_lb.arn}"
   port              = 443
   protocol          = "HTTPS"
   ssl_policy        = "ELBSecurityPolicy-2016-08"
@@ -319,7 +275,7 @@ resource "aws_lb_listener" "api_ec2_listener" {
 
   default_action {
     type             = "forward"
-    target_group_arn = aws_lb_target_group.api_ec2_tg.arn
+    target_group_arn = "${aws_lb_target_group.api_ec2_tg.arn}"
   }
 }
 
@@ -397,11 +353,11 @@ resource "aws_iam_policy" "ecr_policy" {
 }
 
 resource "aws_iam_role_policy_attachment" "ecr_role_policy_attachment" {
-  role       = aws_iam_role.ec2_assume_role.name
-  policy_arn = aws_iam_policy.ecr_policy.arn
+  role       = "${aws_iam_role.ec2_assume_role.name}"
+  policy_arn = "${aws_iam_policy.ecr_policy.arn}"
 }
 
 resource "aws_iam_instance_profile" "ec2_instance_profile_sports_api" {
   name = "ec2-instance-profile-sports-api"
-  role = aws_iam_role.ec2_assume_role.name
+  role = "${aws_iam_role.ec2_assume_role.name}"
 }
