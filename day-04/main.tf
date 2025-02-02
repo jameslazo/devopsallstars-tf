@@ -97,12 +97,21 @@ resource "aws_route_table" "doas_pubrt" {
   }
 }
 
-resource "aws_route_table_association" "doas_rta" {
+resource "aws_route_table_association" "doas_rta_primary" {
   depends_on = [
     aws_subnet.api_ec2_primary,
     aws_route_table.doas_pubrt
   ]
   subnet_id      = aws_subnet.api_ec2_primary.id
+  route_table_id = aws_route_table.doas_pubrt.id
+}
+
+resource "aws_route_table_association" "doas_rta_secondary" {
+  depends_on = [
+    aws_subnet.api_ec2_primary,
+    aws_route_table.doas_pubrt
+  ]
+  subnet_id      = aws_subnet.api_ec2_secondary.id
   route_table_id = aws_route_table.doas_pubrt.id
 }
 
@@ -120,13 +129,13 @@ resource "aws_subnet" "api_ec2_primary" {
   }
 }
 
-resource "aws_subnet" "api_ec2_failover" {
-  cidr_block              = var.cidr_block_subnet_api_ec2_failover
-  availability_zone       = var.availability_zone_failover
+resource "aws_subnet" "api_ec2_secondary" {
+  cidr_block              = var.cidr_block_subnet_api_ec2_secondary
+  availability_zone       = var.availability_zone_secondary
   map_public_ip_on_launch = true
   vpc_id                  = data.terraform_remote_state.shared_state.outputs.aws_vpc_id
   tags = {
-    Name = "api_ec2-failover"
+    Name = "api_ec2-secondary"
   }
 }
 
@@ -189,13 +198,14 @@ resource "aws_security_group" "api_ec2_elb_sg" {
 * EC2 Instances *
 ****************/
 module "api_ec2_instances" {
-  source          = "./modules/ec2"
-  instance_type   = var.instance_type
-  instance_count  = 2
-  subnet_ids      = [aws_subnet.api_ec2_primary.id, aws_subnet.api_ec2_failover.id]
-  security_groups = [aws_security_group.api_ec2_sg.id]
-  tags            = var.tags
-  user_data       = data.template_file.user_data.rendered
+  source                 = "./modules/ec2"
+  instance_type          = var.instance_type
+  instance_count         = 2
+  subnet_ids             = [aws_subnet.api_ec2_primary.id, aws_subnet.api_ec2_secondary.id]
+  vpc_security_group_ids = [aws_security_group.api_ec2_sg.id]
+  iam_instance_profile   = aws_iam_instance_profile.ec2_instance_profile_sports_api.name
+  tags                   = var.tags
+  user_data              = data.template_file.user_data.rendered
 }
 
 data "template_file" "user_data" {
@@ -217,7 +227,7 @@ resource "aws_lb" "api_ec2_lb" {
   internal           = false
   load_balancer_type = "application"
   security_groups    = [aws_security_group.api_ec2_elb_sg.id]
-  subnets            = [aws_subnet.api_ec2_primary.id, aws_subnet.api_ec2_failover.id]
+  subnets            = [aws_subnet.api_ec2_primary.id, aws_subnet.api_ec2_secondary.id]
 
   enable_deletion_protection = false
   enable_http2               = true
@@ -237,9 +247,8 @@ resource "aws_lb_target_group" "api_ec2_tg" {
   vpc_id   = data.terraform_remote_state.shared_state.outputs.aws_vpc_id
 
   health_check {
-    path                = "/"
+    path                = "/sports"
     protocol            = "HTTP"
-    port                = 80
     healthy_threshold   = 5
     unhealthy_threshold = 2
     timeout             = 5
@@ -267,51 +276,61 @@ resource "aws_lb_listener" "api_ec2_listener_http" {
   }
 }
 
-resource "aws_lb_listener" "api_ec2_listener" {
-  load_balancer_arn = aws_lb.api_ec2_lb.arn
-  port              = 443
-  protocol          = "HTTPS"
-  ssl_policy        = "ELBSecurityPolicy-2016-08"
-  certificate_arn   = var.acm_certificate_arn
+/* Uncomment for SSM VPC Endpoint
+resource "aws_vpc_endpoint" "doas_vpc_endpoint" {
+  vpc_id = data.terraform_remote_state.shared_state.outputs.aws_vpc_id
+  service_name = "com.amazonaws.${var.region}.ssm"
+  route_table_ids = [aws_route_table.doas_pubrt.id]
+}
+*/
 
-  default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.api_ec2_tg.arn
-  }
+
+/************************ | https://andrewtarry.com/posts/aws-http-gateway-with-cognito-and-terraform/
+* API Gateway Resources * | https://hands-on.cloud/terraform-api-gateway/
+************************/
+resource "aws_apigatewayv2_api" "sports_api" {
+  depends_on    = [aws_lb_listener.api_ec2_listener_http]
+  name          = "sports-api"
+  protocol_type = "HTTP"
+}
+
+/* Uncomment for VPC Link (private)
+resource "aws_apigatewayv2_vpc_link" "doas_vpc_link" {
+  name               = "doas-vpc-link"
+  security_group_ids = [aws_security_group.api_ec2_sg.id]
+  subnet_ids         = [aws_subnet.api_ec2_primary.id, aws_subnet.api_ec2_secondary.id]
+}
+*/
+
+resource "aws_apigatewayv2_route" "sports_api_route" {
+  api_id             = aws_apigatewayv2_api.sports_api.id
+  route_key          = "GET /sports"
+  target             = "integrations/${aws_apigatewayv2_integration.sports_api_integration.id}"
+  authorization_type = "NONE"
+}
+
+resource "aws_apigatewayv2_integration" "sports_api_integration" {
+  api_id             = aws_apigatewayv2_api.sports_api.id
+  integration_type   = "HTTP_PROXY"
+  integration_method = "ANY"
+  integration_uri    = "http://${aws_lb.api_ec2_lb.dns_name}/sports"
+}
+
+resource "aws_apigatewayv2_deployment" "sports_api_deployment" {
+  api_id     = aws_apigatewayv2_api.sports_api.id
+}
+
+resource "aws_apigatewayv2_stage" "dev" {
+  api_id        = aws_apigatewayv2_api.sports_api.id
+  name          = "dev"
+  auto_deploy   = true
+  deployment_id = aws_apigatewayv2_deployment.sports_api_deployment.id
 }
 
 
 /***************
 * IAM Policies * 
 ***************/
-// SSM Policy | https://docs.aws.amazon.com/systems-manager/latest/userguide/getting-started-add-permissions-to-existing-profile.html
-resource "aws_iam_policy" "aws_ssm_policy" {
-  name        = "aws-ssm-policy"
-  description = "Policy for SSM"
-  policy = jsonencode({
-    "Version" : "2012-10-17",
-    "Statement" : [
-      {
-        "Effect" : "Allow",
-        "Action" : [
-          "ssmmessages:CreateControlChannel",
-          "ssmmessages:CreateDataChannel",
-          "ssmmessages:OpenControlChannel",
-          "ssmmessages:OpenDataChannel"
-        ],
-        "Resource" : "*"
-      },
-      {
-        "Effect" : "Allow",
-        "Action" : [
-          "s3:GetEncryptionConfiguration"
-        ],
-        "Resource" : "*"
-      }
-    ]
-  })
-}
-
 // EC2 Role, Policy, Policy Attachment & Instance Profile | https://beltrani.com/ec2-instance-and-container-access-to-ecr-and-other-services/
 resource "aws_iam_role" "ec2_assume_role" {
   name = "ec2-ecr-access-role"
@@ -329,6 +348,7 @@ resource "aws_iam_role" "ec2_assume_role" {
   })
 }
 
+// ECR + SSM | https://docs.aws.amazon.com/systems-manager/latest/userguide/getting-started-add-permissions-to-existing-profile.html
 resource "aws_iam_policy" "ecr_policy" {
   name = "ec2-ecr-policy"
   policy = jsonencode({
@@ -348,6 +368,23 @@ resource "aws_iam_policy" "ecr_policy" {
         ]
 
         Resource = "arn:aws:ecr:${var.region}:${var.account_id}:repository/${aws_ecr_repository.devops_ecr.name}"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "ssmmessages:CreateControlChannel",
+          "ssmmessages:CreateDataChannel",
+          "ssmmessages:OpenControlChannel",
+          "ssmmessages:OpenDataChannel"
+        ],
+        Resource = ["*"]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:GetEncryptionConfiguration"
+        ],
+        Resource = ["*"]
       }
     ]
   })
@@ -363,6 +400,6 @@ resource "aws_iam_instance_profile" "ec2_instance_profile_sports_api" {
   role = aws_iam_role.ec2_assume_role.name
 }
 
-output "user_data_output" {
-  value = data.template_file.user_data.rendered
+output "api_endpoint" {
+  value = aws_apigatewayv2_api.sports_api.api_endpoint
 }

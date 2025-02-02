@@ -15,7 +15,7 @@ variable "availability_zone_primary" {
   default = "us-east-1a"
 }
 
-variable "availability_zone_failover" {
+variable "availability_zone_secondary" {
   type    = string
   default = "us-east-1b"
 }
@@ -25,7 +25,7 @@ variable "cidr_block_subnet_api_ec2_primary" {
   default = "172.16.0.0/24"
 }
 
-variable "cidr_block_subnet_api_ec2_failover" {
+variable "cidr_block_subnet_api_ec2_secondary" {
   type    = string
   default = "172.16.1.0/24"
 }

@@ -1,23 +1,27 @@
 variable "subnet_ids" {
-  type    = list(string)
+  type = list(string)
 }
 
 variable "instance_type" {
-  type    = string
+  type = string
 }
 
-variable "security_groups" {
-  type    = list(string)
+variable "vpc_security_group_ids" {
+  type = list(string)
 }
 
 variable "tags" {
-  type    = map(string)
+  type = map(string)
 }
 
 variable "user_data" {
-  type    = string
+  type = string
 }
 
 variable "instance_count" {
-  type    = number
+  type = number
+}
+
+variable "iam_instance_profile" {
+  type = string
 }

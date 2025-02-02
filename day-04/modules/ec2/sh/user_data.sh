@@ -4,24 +4,29 @@
 exec > /var/log/user_data.log 2>&1
 
 # Environment variables
-export ECR_REPO_URI="${ECR_REPO_URI}"
-export ECR_REPO_NAME="${ECR_REPO_NAME}"
-export AWS_REGION="${AWS_REGION}"
-export IMAGE_TAG="latest"
-export CONTAINER_NAME="sports-api"
+echo ECR_REPO_URI="${ECR_REPO_URI}" >> /etc/environment
+echo ECR_REPO_NAME="${ECR_REPO_NAME}" >> /etc/environment
+echo AWS_REGION="${AWS_REGION}" >> /etc/environment
+echo IMAGE_TAG="latest" >> /etc/environment
+echo CONTAINER_NAME="sports-api" >> /etc/environment
+. /etc/environment
+
+echo "alias dp='docker pull $ECR_REPO_URI:$IMAGE_TAG'" >> /home/ec2-user/.bashrc
+echo "alias dr='docker pull $ECR_REPO_URI:$IMAGE_TAG'" >> /home/ec2-user/.bashrc
+. /home/ec2-user/.bashrc
 
 # Install and start Docker
 yum update -y
 yum install docker -y
 service docker start
-usermod -aG docker ec2-user
 newgrp docker
+usermod -aG docker ec2-user
 
 cd /home/ec2-user
 
 # Install Docker Compose
-# curl -SL "https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64" -o /usr/local/bin/docker-compose
-# chmod +x /usr/local/bin/docker-compose
+curl -SL "https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64" -o /usr/local/bin/docker-compose
+chmod +x /usr/local/bin/docker-compose
 
 # https://reintech.io/blog/zero-downtime-deployments-docker-compose-rolling-updates
 cat <<EOF > docker-compose.yml
@@ -40,30 +45,33 @@ services:
         condition: on-failure
 EOF
 
-cat <<ECRCRON > /opt/ecr-cron.sh
+cat <<ECRCRED > /usr/local/bin/ecr-credentials.sh
+#!/bin/bash
+
+# Log commands
+exec > /var/log/ecr-credentials.log 2>&1
+
+aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin $ECR_REPO_URI
+ECRCRED
+chmod +x /usr/local/bin/ecr-credentials.sh
+/usr/local/bin/ecr-credentials.sh
+
+cat <<ECRCRON > /usr/local/bin/ecr-pull.sh
 #!/bin/bash
 
 # Log commands
 exec > /var/log/docker-compose.log 2>&1
 
-# Check for image tag, execute docker-compose commands
-if aws ecr describe-images \
-  --repository-name "$ECR_REPO_NAME" \
-  --region "$AWS_REGION" \
-  --query "imageDetails[?contains(imageTags, '$IMAGE_TAG')]" \
-  --output text; then
-    echo "Image exists in ECR"
-    docker-compose pull "$ECR_REPO_URI:$IMAGE_TAG" 
-    docker-compose up -d
-else
-    echo "No image with $IMAGE_TAG in ECR"
-fi
+# Pull and deploy latest image
+docker-compose pull
+docker-compose up -d
 ECRCRON
+chmod +x /usr/local/bin/ecr-pull.sh
+/usr/local/bin/ecr-pull.sh
 
-chmod +x /opt/ecr-cron.sh
-
-# Schedule cron job
-echo "*/5 * * * * /opt/ecr-cron.sh" > /etc/cron.d/ecr-cron
+# Schedule cron jobs
+echo "0 */12 * * * /usr/local/bin/ecr-credentials.sh" > /etc/cron.d/ecr-credentials
+echo "*/15 * * * * /usr/local/bin/ecr-cron.sh" > /etc/cron.d/ecr-cron
 
 # Grab instance metadata
 echo "exporting token for IMDSv2"
