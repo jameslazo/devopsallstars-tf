@@ -96,7 +96,17 @@ data "aws_iam_policy_document" "devopsallstars_gha_role_policy" {
       "s3:ListBucket",
       "s3:GetBucketLocation",
       "s3:GetObject",
-      "s3:DeleteObject",
+      "s3:DeleteObject"
+    ]
+
+    resources = [
+      "arn:aws:s3:::${var.tags}*",
+      "arn:aws:s3:::${var.tags}/*"
+    ]
+  }
+
+  statement {
+    actions = [
       "lambda:UpdateFunctionCode",
       "lambda:UpdateFunctionConfiguration",
       "lambda:GetFunction",
@@ -104,9 +114,27 @@ data "aws_iam_policy_document" "devopsallstars_gha_role_policy" {
     ]
 
     resources = [
-      "arn:aws:s3:::${var.tags}*",
-      "arn:aws:s3:::${var.tags}/*",
-      "arn:aws:lambda:*"
+      "arn:aws:lambda:${var.region}:${var.account_id}:*",
+    ]
+  }
+
+  statement {
+    actions = [
+      "ecr:GetAuthorizationToken",
+      "ecr:BatchCheckLayerAvailability",
+      "ecr:GetDownloadUrlForLayer",
+      "ecr:BatchGetImage",
+      "ecr:InitiateLayerUpload",
+      "ecr:UploadLayerPart",
+      "ecr:CompleteLayerUpload",
+      "ecr:PutImage",
+      "ecr:DescribeRepositories",
+      "ecr:ListImages",
+      "ecr:DescribeImages"
+    ]
+
+    resources = [
+      "*"
     ]
   }
 }
