@@ -47,6 +47,10 @@ data "terraform_remote_state" "shared_state" {
 |
 * EC2 Instances
 |
+* ALB Resources
+|
+* API Gateway Resources
+|
 * IAM Roles & Policies
 | 
 ******************************/
