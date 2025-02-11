@@ -16,3 +16,4 @@ backend.tf
 # Whitelist other files
 !.gitignore
 !*.sh
+!container_definitions.tpl
