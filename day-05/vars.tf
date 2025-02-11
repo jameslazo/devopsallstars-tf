@@ -35,14 +35,14 @@ variable "vpc_id" {
   type        = string
 }
 
-variable "public_subnets" {
-  description = "List of public subnet IDs"
-  type        = list(string)
+variable "cidr_block_pub" {
+  description = "cidr block for public subnet"
+  type        = string
 }
 
-variable "private_subnets" {
-  description = "List of private subnet IDs"
-  type        = list(string)
+variable "cidr_block_priv" {
+  description = "cidr block for private subnet"
+  type        = string
 }
 
 variable "igw_id" {
@@ -85,4 +85,9 @@ variable "retry_delay" {
   description = "Delay in seconds between retry attempts"
   type        = number
   default     = 60
+}
+
+variable "tags" {
+  description = "Tags to apply to resources"
+  type        = map(string)
 }
