@@ -31,6 +31,19 @@ data "terraform_remote_state" "shared_state" {
 }
 
 
+/**********************************
+* Internet Gateway & Route Tables *
+**********************************/
+
+
+/**********
+* Subnets *
+**********/
+
+
+/******************
+* Security Groups *
+******************/
 resource "aws_security_group" "ecs_task" {
   name        = "${var.project_name}-ecs-task-sg"
   description = "Security group for ECS tasks"
