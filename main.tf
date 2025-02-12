@@ -19,6 +19,8 @@ provider "aws" {
 ***************************/
 resource "aws_vpc" "devopsallstars" {
   cidr_block = var.vpc_cidr_block
+  enable_dns_hostnames = true
+  enable_dns_support = true
   tags = {
     name = var.tags
   }
