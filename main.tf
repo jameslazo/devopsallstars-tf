@@ -2,16 +2,11 @@ provider "aws" {
   region = var.region
 }
 
-resource "aws_vpc" "devopsallstars" {
-  cidr_block = var.vpc_cidr_block
-  tags = {
-    name = var.tags
-  }
-}
-
 /***************************
 * Shared Backend Resources *
 ****************************
+|
+* VPC & Internet Gateway
 |
 * DDB Tables for state locking
 |
@@ -22,6 +17,19 @@ resource "aws_vpc" "devopsallstars" {
 * Lambda Execution Role & Policy
 |
 ***************************/
+resource "aws_vpc" "devopsallstars" {
+  cidr_block = var.vpc_cidr_block
+  tags = {
+    name = var.tags
+  }
+}
+
+resource "aws_internet_gateway" "igw_devopsallstars" {
+  vpc_id = aws_vpc.devopsallstars.id
+  tags = {
+    Name = var.tags
+  }
+}
 
 // DynamoDB Tables for State Locking  | state migration: https://developer.hashicorp.com/terraform/cli/commands/state/mv
 module "ddb" {

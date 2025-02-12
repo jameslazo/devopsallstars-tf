@@ -2,6 +2,10 @@ output "aws_vpc_id" {
   value = aws_vpc.devopsallstars.id
 }
 
+output "igw_id" {
+  value = aws_internet_gateway.igw_devopsallstars.id
+}
+
 output "lambda_execution_role" {
   value = {
     arn  = aws_iam_role.lambda_exec.arn

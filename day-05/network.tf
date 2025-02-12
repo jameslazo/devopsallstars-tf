@@ -38,24 +38,20 @@ resource "aws_subnet" "media_subnet_pub" {
   cidr_block              = var.cidr_block_pub
   map_public_ip_on_launch = true
   vpc_id                  = data.terraform_remote_state.shared_state.outputs.aws_vpc_id
-  tags = {
-    Name = "api_ec2-primary"
-  }
+  tags = var.tags
 }
 
 resource "aws_subnet" "media_subnet_priv" {
   cidr_block              = var.cidr_block_priv
   map_public_ip_on_launch = false
   vpc_id                  = data.terraform_remote_state.shared_state.outputs.aws_vpc_id
-  tags = {
-    Name = "api_ec2-secondary"
-  }
+  tags = var.tags
 }
 
 
-/**********************************
-* Internet Gateway & Route Tables *
-**********************************/
+/***************
+* Route Tables *
+***************/
 
 
 /******************
