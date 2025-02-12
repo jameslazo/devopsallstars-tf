@@ -45,21 +45,6 @@ variable "cidr_block_priv" {
   type        = string
 }
 
-variable "igw_id" {
-  description = "Internet Gateway ID"
-  type        = string
-}
-
-variable "public_route_table_id" {
-  description = "Public Route Table ID"
-  type        = string
-}
-
-variable "private_route_table_id" {
-  description = "Private Route Table ID"
-  type        = string
-}
-
 variable "rapidapi_ssm_parameter_arn" {
   description = "ARN of the RapidAPI key stored in SSM Parameter Store"
   type        = string
