@@ -6,6 +6,8 @@
       vpc:
         aws_vpc:
           aws_vpc_id: "ID"
+        aws_internet_gateway:
+          igw_id: "ID"
       ddb:
         aws_dynamodb_table:
           keys: 
@@ -20,7 +22,6 @@
         aws_iam_role_policy_attachment:
           lambda_sns_publish_attachment: "ID"
 ************************************/
-
 data "terraform_remote_state" "shared_state" {
   backend = "s3"
   config = {
@@ -34,14 +35,14 @@ data "terraform_remote_state" "shared_state" {
 /**********
 * Subnets *
 **********/
-resource "aws_subnet" "media_subnet_pub" {
+resource "aws_subnet" "subnet_media_pub" {
   cidr_block              = var.cidr_block_pub
   map_public_ip_on_launch = true
   vpc_id                  = data.terraform_remote_state.shared_state.outputs.aws_vpc_id
   tags = var.tags
 }
 
-resource "aws_subnet" "media_subnet_priv" {
+resource "aws_subnet" "subnet_media_priv" {
   cidr_block              = var.cidr_block_priv
   map_public_ip_on_launch = false
   vpc_id                  = data.terraform_remote_state.shared_state.outputs.aws_vpc_id
@@ -52,6 +53,32 @@ resource "aws_subnet" "media_subnet_priv" {
 /***************
 * Route Tables *
 ***************/
+resource "aws_route_table" "pubrt_media" {
+  vpc_id = data.terraform_remote_state.shared_state.outputs.aws_vpc_id
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = data.terraform_remote_state.shared_state.outputs.igw_id
+  }
+  tags = var.tags
+}
+
+resource "aws_route_table_association" "rta_public" {
+  depends_on = [
+    aws_subnet.subnet_media_pub,
+    aws_route_table.pubrt_media
+  ]
+  subnet_id      = aws_subnet.subnet_media_pub.id
+  route_table_id = aws_route_table.pubrt_media.id
+}
+
+resource "aws_route_table_association" "rta_private" {
+  depends_on = [
+    aws_subnet.subnet_media_pub,
+    aws_route_table.pubrt_media
+  ]
+  subnet_id      = aws_subnet.subnet_media_priv.id
+  route_table_id = aws_route_table.pubrt.id_media.id
+}
 
 
 /******************
