@@ -43,6 +43,7 @@ variable "cidr_block_priv" {
 variable "rapidapi_key" {
   description = "RapidAPI key to store in SSM Parameter Store"
   type        = string
+  sensitive = true
 }
 /*
 variable "mediaconvert_role_arn" {
