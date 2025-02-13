@@ -31,7 +31,7 @@ resource "aws_ecs_task_definition" "this" {
     aws_region                 = var.aws_region
     bucket_name                = var.s3_bucket_name
     rapidapi_ssm_parameter_arn = aws_ssm_parameter.key_rapidapi.arn
-    mediaconvert_endpoint      = "https://mediaconvert.${var.aws_region}.amazonaws.com"
+    mediaconvert_endpoint      = "https://mediaconvert.${var.aws_region}.amazonaws.com" # https://docs.aws.amazon.com/general/latest/gr/mediaconvert.html
     mediaconvert_role_arn      = aws_iam_role.mediaconvert_role.arn
   })
 }

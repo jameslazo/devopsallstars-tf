@@ -34,12 +34,12 @@ variable "cidr_block_pub" {
   description = "cidr block for public subnet"
   type        = string
 }
-
+/*
 variable "cidr_block_priv" {
   description = "cidr block for private subnet"
   type        = string
 }
-
+*/
 variable "rapidapi_key" {
   description = "RapidAPI key to store in SSM Parameter Store"
   type        = string
