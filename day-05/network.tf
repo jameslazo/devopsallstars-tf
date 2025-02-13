@@ -39,7 +39,7 @@ resource "aws_subnet" "subnet_media_pub" {
   cidr_block              = var.cidr_block_pub
   map_public_ip_on_launch = true
   vpc_id                  = data.terraform_remote_state.shared_state.outputs.aws_vpc_id
-  tags = var.tags
+  tags                    = var.tags
 }
 /*
 resource "aws_subnet" "subnet_media_priv" {
@@ -93,13 +93,13 @@ resource "aws_security_group" "ecs_task" {
     from_port   = 443
     to_port     = 443
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]  # Allow HTTPS traffic; adjust as needed
+    cidr_blocks = ["0.0.0.0/0"] # Allow HTTPS traffic; adjust as needed
   }
 
   egress {
     from_port   = 0
     to_port     = 0
-    protocol    = "-1"  # Allow all outbound traffic
+    protocol    = "-1" # Allow all outbound traffic
     cidr_blocks = ["0.0.0.0/0"]
   }
 }

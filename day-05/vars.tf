@@ -17,7 +17,7 @@ variable "environment" {
 */
 variable "devops_backend_bucket" {
   description = "tf output state bucket for shared resources (e.g. vpc)"
-  type = string
+  type        = string
 }
 
 variable "s3_bucket_name" {

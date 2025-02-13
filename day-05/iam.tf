@@ -30,11 +30,11 @@ resource "aws_iam_role_policy_attachment" "ecs_task_execution_attach" {
 data "aws_iam_policy_document" "ecs_custom_doc" {
   # 1) S3 Permissions
   statement {
-    actions   = ["s3:GetObject", "s3:PutObject", "s3:CreateBucket", "s3:ListBucket"]
-    effect    = "Allow"
+    actions = ["s3:GetObject", "s3:PutObject", "s3:CreateBucket", "s3:ListBucket"]
+    effect  = "Allow"
     resources = [
-      "arn:aws:s3:::${var.s3_bucket_name}",     # Bucket-level permissions
-      "arn:aws:s3:::${var.s3_bucket_name}/*"   # Object-level permissions
+      "arn:aws:s3:::${var.s3_bucket_name}",  # Bucket-level permissions
+      "arn:aws:s3:::${var.s3_bucket_name}/*" # Object-level permissions
     ]
   }
 
@@ -45,11 +45,11 @@ data "aws_iam_policy_document" "ecs_custom_doc" {
       "ssm:GetParameters",
       "ssm:GetParameterHistory"
     ]
-    effect    = "Allow"
+    effect = "Allow"
     resources = [
       "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/highlight-pipeline-final/*",
       "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/NCAAHighlightsBackup/*",
-      "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/myproject/*"  # Added for broader access if needed
+      "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/myproject/*" # Added for broader access if needed
     ]
   }
 
@@ -61,7 +61,7 @@ data "aws_iam_policy_document" "ecs_custom_doc" {
       "mediaconvert:ListJobs"
     ]
     effect    = "Allow"
-    resources = ["*"]  # MediaConvert requires "*" for resource ARN
+    resources = ["*"] # MediaConvert requires "*" for resource ARN
   }
 }
 
