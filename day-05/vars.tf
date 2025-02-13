@@ -9,12 +9,12 @@ variable "project_name" {
   description = "Name of the project"
   type        = string
 }
-
+/*
 variable "environment" {
   description = "Deployment environment (e.g., dev, prod, staging)"
   type        = string
 }
-
+*/
 variable "devops_backend_bucket" {
   description = "tf output state bucket for shared resources (e.g. vpc)"
   type = string
@@ -30,11 +30,6 @@ variable "ecr_repository_name" {
   type        = string
 }
 
-variable "vpc_id" {
-  description = "VPC ID"
-  type        = string
-}
-
 variable "cidr_block_pub" {
   description = "cidr block for public subnet"
   type        = string
@@ -45,21 +40,16 @@ variable "cidr_block_priv" {
   type        = string
 }
 
-variable "rapidapi_ssm_parameter_arn" {
-  description = "ARN of the RapidAPI key stored in SSM Parameter Store"
+variable "rapidapi_key" {
+  description = "RapidAPI key to store in SSM Parameter Store"
   type        = string
 }
-
-variable "mediaconvert_endpoint" {
-  description = "AWS MediaConvert endpoint"
-  type        = string
-}
-
+/*
 variable "mediaconvert_role_arn" {
   description = "ARN of the MediaConvert IAM role"
   type        = string
 }
-
+*/
 variable "retry_count" {
   description = "Number of retry attempts for failed operations"
   type        = number

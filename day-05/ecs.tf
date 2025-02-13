@@ -9,6 +9,13 @@ resource "aws_cloudwatch_log_group" "ecs_log_group" {
   retention_in_days = 7
 }
 
+resource "aws_ssm_parameter" "key_rapidapi" {
+  name        = "${var.project_name}/key_rapidapi"
+  type        = "String"
+  value       = var.rapidapi_key
+  description = "rapidapi key"
+}
+
 resource "aws_ecs_task_definition" "this" {
   family                   = "${var.project_name}-task"
   cpu                      = 256
@@ -23,9 +30,9 @@ resource "aws_ecs_task_definition" "this" {
     log_group_name             = aws_cloudwatch_log_group.ecs_log_group.name
     aws_region                 = var.aws_region
     bucket_name                = var.s3_bucket_name
-    rapidapi_ssm_parameter_arn = var.rapidapi_ssm_parameter_arn
-    mediaconvert_endpoint      = var.mediaconvert_endpoint
-    mediaconvert_role_arn      = var.mediaconvert_role_arn
+    rapidapi_ssm_parameter_arn = aws_ssm_parameter.key_rapidapi.arn
+    mediaconvert_endpoint      = "https://mediaconvert.${var.aws_region}.amazonaws.com"
+    mediaconvert_role_arn      = aws_iam_role.mediaconvert_role.arn
   })
 }
 
@@ -37,7 +44,7 @@ resource "aws_ecs_service" "this" {
   launch_type     = "FARGATE"
 
   network_configuration {
-    subnets          = [aws_subnet.media_subnet_pub.id]
+    subnets          = [aws_subnet.subnet_media_pub.id]
     security_groups  = [aws_security_group.ecs_task.id]
     assign_public_ip = true
   }

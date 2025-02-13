@@ -27,7 +27,7 @@ data "terraform_remote_state" "shared_state" {
   config = {
     bucket = "${var.devops_backend_bucket}" # S3 bucket storing the source state
     key    = "shared/terraform.tfstate"     # Path to the source state file
-    region = "${var.region}"
+    region = "${var.aws_region}"
   }
 }
 
@@ -41,14 +41,14 @@ resource "aws_subnet" "subnet_media_pub" {
   vpc_id                  = data.terraform_remote_state.shared_state.outputs.aws_vpc_id
   tags = var.tags
 }
-
+/*
 resource "aws_subnet" "subnet_media_priv" {
   cidr_block              = var.cidr_block_priv
   map_public_ip_on_launch = false
   vpc_id                  = data.terraform_remote_state.shared_state.outputs.aws_vpc_id
   tags = var.tags
 }
-
+*/
 
 /***************
 * Route Tables *
@@ -70,16 +70,16 @@ resource "aws_route_table_association" "rta_public" {
   subnet_id      = aws_subnet.subnet_media_pub.id
   route_table_id = aws_route_table.pubrt_media.id
 }
-
+/*
 resource "aws_route_table_association" "rta_private" {
   depends_on = [
     aws_subnet.subnet_media_pub,
     aws_route_table.pubrt_media
   ]
   subnet_id      = aws_subnet.subnet_media_priv.id
-  route_table_id = aws_route_table.pubrt.id_media.id
+  route_table_id = aws_route_table.pubrt_media.id
 }
-
+*/
 
 /******************
 * Security Groups *
