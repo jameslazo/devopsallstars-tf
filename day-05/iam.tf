@@ -49,7 +49,7 @@ data "aws_iam_policy_document" "ecs_custom_doc" {
     resources = [
       "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/highlight-pipeline-final/*",
       "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/NCAAHighlightsBackup/*",
-      "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/myproject/*" # Added for broader access if needed
+      "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/${var.project_name}-key_rapidapi" # Added for broader access if needed
     ]
   }
 

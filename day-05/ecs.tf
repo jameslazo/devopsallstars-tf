@@ -10,7 +10,7 @@ resource "aws_cloudwatch_log_group" "ecs_log_group" {
 }
 
 resource "aws_ssm_parameter" "key_rapidapi" {
-  name        = "${var.project_name}/key_rapidapi"
+  name        = "${var.project_name}-key_rapidapi"
   type        = "String"
   value       = var.rapidapi_key
   description = "rapidapi key"
