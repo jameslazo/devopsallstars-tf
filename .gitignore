@@ -17,3 +17,4 @@ backend.tf
 !.gitignore
 !*.sh
 !container_definitions.tpl
+!*.png

@@ -8,19 +8,6 @@
           aws_vpc_id: "ID"
         aws_internet_gateway:
           igw_id: "ID"
-      ddb:
-        aws_dynamodb_table:
-          keys: 
-            - day0{1,2,3,4,5,6}
-      s3:
-        aws_s3_bucket:
-          lambda_bucket: "ID"
-      iam:
-        aws_iam_role:
-          keys:
-            - lambda_exec{.arn,.name}
-        aws_iam_role_policy_attachment:
-          lambda_sns_publish_attachment: "ID"
 ************************************/
 data "terraform_remote_state" "shared_state" {
   backend = "s3"
