@@ -46,7 +46,7 @@ module "ddb" {
 resource "aws_s3_bucket" "devops_backend_bucket" {
   bucket = var.devops_backend_bucket
   lifecycle {
-    prevent_destroy = true
+    prevent_destroy = false
   }
 }
 
